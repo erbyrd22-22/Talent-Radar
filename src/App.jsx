@@ -227,9 +227,25 @@ export default function TalentRadar() {
 
   const saveSearchResult = async (result) => {
     setIsSaving(true);
-    const d = { ...result }; delete d.id; delete d.source;
-    const { data, error } = await supabase.from('candidates').insert([d]).select().single();
-    if (error) { console.error('Save error:', error); notify('Save failed', 'error'); }
+    // Only include columns that exist in the database
+    const candidateData = {
+      name: result.name,
+      email: result.email || null,
+      location: result.location || null,
+      previous_company: result.previous_company || null,
+      previous_title: result.previous_title || null,
+      previous_role: result.previous_role || null,
+      new_company: result.new_company || null,
+      new_title: result.new_title || null,
+      new_role: result.new_role || null,
+      industry: result.industry || null,
+      job_change_date: result.job_change_date || null,
+      change_type: result.change_type || 'lateral',
+      match_score: result.match_score || 75,
+      status: 'new'
+    };
+    const { data, error } = await supabase.from('candidates').insert([candidateData]).select().single();
+    if (error) { console.error('Save error:', error); notify('Save failed: ' + error.message, 'error'); }
     else if (data) { setCandidates(p => [data, ...p]); setSearchResults(p => p.filter(r => r.id !== result.id)); await logActivity('candidate', 'Saved: ' + data.name); notify('Saved to Candidates!'); }
     setIsSaving(false);
   };
