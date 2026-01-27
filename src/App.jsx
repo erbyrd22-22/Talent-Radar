@@ -404,3 +404,38 @@ export default function TalentRadar() {
     </div>
   );
 }
+-500 mb-2">Candidate Name *</label><input className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm" value={newFollowUp.candidate_name} onChange={e => setNewFollowUp(p => ({ ...p, candidate_name: e.target.value }))} /></div>
+          <div><label className="block text-xs font-semibold text-slate-500 mb-2">Date *</label><input type="date" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm" value={newFollowUp.date} onChange={e => setNewFollowUp(p => ({ ...p, date: e.target.value }))} /></div>
+          <div><label className="block text-xs font-semibold text-slate-500 mb-2">Note</label><textarea className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm resize-none" rows={3} value={newFollowUp.note} onChange={e => setNewFollowUp(p => ({ ...p, note: e.target.value }))} /></div>
+        </div>
+        <div className="flex gap-3 justify-end mt-6 pt-4 border-t"><button onClick={() => closeModal('followUp')} className="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600">Cancel</button><button onClick={handleAddFollowUp} disabled={!newFollowUp.date || !newFollowUp.candidate_name || isSaving} className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{isSaving ? 'Saving...' : 'Add'}</button></div>
+      </Modal>
+
+      <Modal id="testEmail">
+        <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold text-slate-800">Add Test Email</h2><button onClick={() => closeModal('testEmail')} className="p-2 hover:bg-slate-100 rounded-xl"><Icon name="x" size={20} color="#64748b" /></button></div>
+        <div className="space-y-4">
+          <div><label className="block text-xs font-semibold text-slate-500 mb-2">Name *</label><input className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm" value={newTestEmail.name} onChange={e => setNewTestEmail(p => ({ ...p, name: e.target.value }))} /></div>
+          <div><label className="block text-xs font-semibold text-slate-500 mb-2">Email *</label><input type="email" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm" value={newTestEmail.email} onChange={e => setNewTestEmail(p => ({ ...p, email: e.target.value }))} /></div>
+          <div><label className="block text-xs font-semibold text-slate-500 mb-2">Company</label><input className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm" value={newTestEmail.company} onChange={e => setNewTestEmail(p => ({ ...p, company: e.target.value }))} /></div>
+        </div>
+        <div className="flex gap-3 justify-end mt-6 pt-4 border-t"><button onClick={() => closeModal('testEmail')} className="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600">Cancel</button><button onClick={handleAddTestEmail} disabled={!newTestEmail.name || !newTestEmail.email || isSaving} className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{isSaving ? 'Saving...' : 'Add'}</button></div>
+      </Modal>
+
+      <Modal id="sendTest">{selectedTestEmail && <>
+        <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold text-slate-800">Send Test Email</h2><button onClick={() => { closeModal('sendTest'); setSelectedTestEmail(null); setSelectedTemplate(null); }} className="p-2 hover:bg-slate-100 rounded-xl"><Icon name="x" size={20} color="#64748b" /></button></div>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4"><div className="font-semibold text-emerald-800">{selectedTestEmail.name}</div><div className="text-sm text-emerald-600">{selectedTestEmail.email}</div></div>
+        <div className="mb-4"><label className="block text-xs font-semibold text-slate-500 mb-3">Select Template</label><div className="space-y-2 max-h-48 overflow-y-auto">{emailTemplates.map(t => <div key={t.id} onClick={() => setSelectedTemplate(t)} className={`p-3 rounded-xl cursor-pointer ${selectedTemplate?.id === t.id ? 'bg-emerald-100 border-2 border-emerald-500' : 'bg-slate-50 hover:bg-slate-100 border border-slate-200'}`}><div className="font-semibold text-sm">{t.name}</div></div>)}</div></div>
+        <div className="flex gap-3 justify-end pt-4 border-t"><button onClick={() => { closeModal('sendTest'); setSelectedTestEmail(null); setSelectedTemplate(null); }} className="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600">Cancel</button><button onClick={handleSendTest} disabled={!selectedTemplate} className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">Send Test</button></div>
+      </>}</Modal>
+
+      <Modal id="settings">
+        <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold text-slate-800">Settings</h2><button onClick={() => closeModal('settings')} className="p-2 hover:bg-slate-100 rounded-xl"><Icon name="x" size={20} color="#64748b" /></button></div>
+        <div className="space-y-4">
+          <div><label className="block text-xs font-semibold text-slate-500 mb-2">Your Name</label><input className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm" value={settings.sender_name || ''} onChange={e => setSettings(p => ({ ...p, sender_name: e.target.value }))} /><p className="text-xs text-slate-400 mt-1">Used as {"{{senderName}}"}</p></div>
+          <div><label className="block text-xs font-semibold text-slate-500 mb-2">Company Name</label><input className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm" value={settings.company_name || ''} onChange={e => setSettings(p => ({ ...p, company_name: e.target.value }))} /><p className="text-xs text-slate-400 mt-1">Used as {"{{company}}"}</p></div>
+        </div>
+        <div className="flex gap-3 justify-end mt-6 pt-4 border-t"><button onClick={() => closeModal('settings')} className="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600">Cancel</button><button onClick={saveSettings} disabled={isSaving} className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{isSaving ? 'Saving...' : 'Save'}</button></div>
+      </Modal>
+    </div>
+  );
+}
