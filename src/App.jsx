@@ -7,7 +7,6 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const TEST_EMAIL = 'erbyrd22@gmail.com';
 
-// Send email via our Vercel API route
 const sendEmail = async (to, subject, body, isTest = false) => {
   try {
     const response = await fetch('/api/send-email', {
@@ -18,7 +17,6 @@ const sendEmail = async (to, subject, body, isTest = false) => {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Email error:', error);
     return { success: false, error: error.message };
   }
 };
@@ -43,10 +41,12 @@ const Icon = ({ name, size = 20, color = "currentColor" }) => {
     chevronDown: <polyline points="6 9 12 15 18 9"/>,
     refresh: <><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></>,
     download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>,
+    save: <><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></>,
     settings: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
     activity: <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>,
     file: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></>,
     userPlus: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></>,
+    userCheck: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></>,
     globe: <><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></>,
     mapPin: <><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></>,
     search: <><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>,
@@ -138,7 +138,7 @@ export default function TalentRadar() {
   const [modals, setModals] = useState({});
   const [selectedTestEmail, setSelectedTestEmail] = useState(null);
   const [newCandidate, setNewCandidate] = useState({ name: '', email: '', location: '', previous_company: '', previous_title: '', previous_role: 'Mid Level', new_company: '', new_title: '', new_role: 'Mid Level', industry: 'Technology', job_change_date: '', status: 'new', change_type: 'lateral' });
-  const [newFollowUp, setNewFollowUp] = useState({ candidate_name: '', date: '', note: '' });
+  const [newFollowUp, setNewFollowUp] = useState({ candidate_id: '', candidate_name: '', date: '', note: '' });
   const [newTestEmail, setNewTestEmail] = useState({ name: '', email: '', company: '' });
   const [templateForm, setTemplateForm] = useState({ name: '', subject: '', body: '' });
 
@@ -161,20 +161,28 @@ export default function TalentRadar() {
         supabase.from('activities').select('*').order('timestamp', { ascending: false }).limit(50),
         supabase.from('settings').select('*').single()
       ]);
-      if (c.data) setCandidates(c.data);
-      if (t.data) setEmailTemplates(t.data);
-      if (e.data) setSentEmails(e.data);
-      if (f.data) setFollowUps(f.data);
-      if (te.data) setTestEmails(te.data);
-      if (a.data) setActivities(a.data);
+      setCandidates(c.data || []);
+      setEmailTemplates(t.data || []);
+      setSentEmails(e.data || []);
+      setFollowUps(f.data || []);
+      setTestEmails(te.data || []);
+      setActivities(a.data || []);
       if (s.data) setSettings(s.data);
       setIsConnected(true);
-    } catch (err) { setIsConnected(false); }
+    } catch (err) { 
+      console.error('Load error:', err);
+      setIsConnected(false); 
+    }
     setIsLoading(false);
   };
 
   const notify = (msg, type = 'success') => { setNotification({ msg, type }); setTimeout(() => setNotification(null), 4000); };
-  const logActivity = async (type, desc) => { const { data } = await supabase.from('activities').insert([{ type, description: desc }]).select().single(); if (data) setActivities(p => [data, ...p]); };
+  const logActivity = async (type, desc) => { 
+    try {
+      const { data } = await supabase.from('activities').insert([{ type, description: desc }]).select().single(); 
+      if (data) setActivities(p => [data, ...p]); 
+    } catch (err) { console.error('Activity log error:', err); }
+  };
   const openModal = (m) => setModals(p => ({ ...p, [m]: true }));
   const closeModal = (m) => setModals(p => ({ ...p, [m]: false }));
 
@@ -185,26 +193,18 @@ export default function TalentRadar() {
     setTimeout(() => {
       const results = generateSearchResults(searchParams.industries, searchParams.jobLevels, searchParams.locations, searchParams.dateStart, searchParams.dateEnd, 15);
       setSearchResults(results);
-      setActiveTab('candidates');
+      setActiveTab('search');
       setIsSearching(false);
       notify('Found ' + results.length + ' job changes!');
     }, 1500);
   };
 
-  const allCandidates = useMemo(() => {
-    const combined = [...candidates];
-    searchResults.forEach(sr => { if (!combined.find(c => c.name === sr.name && c.new_company === sr.new_company)) combined.push(sr); });
-    return combined;
-  }, [candidates, searchResults]);
-
   const filteredCandidates = useMemo(() => {
-    let list = allCandidates.filter(c => {
-      if (searchParams.industries.length && !searchParams.industries.includes(c.industry)) return false;
-      if (searchParams.jobLevels.length && !searchParams.jobLevels.includes(c.new_role)) return false;
-      if (searchParams.locations.length && !searchParams.locations.some(l => c.location?.includes(l.split(',')[0]))) return false;
-      if (searchParams.status && c.status !== searchParams.status) return false;
-      return true;
-    });
+    let list = [...candidates];
+    if (searchParams.industries.length) list = list.filter(c => searchParams.industries.includes(c.industry));
+    if (searchParams.jobLevels.length) list = list.filter(c => searchParams.jobLevels.includes(c.new_role));
+    if (searchParams.locations.length) list = list.filter(c => searchParams.locations.some(l => c.location?.includes(l.split(',')[0])));
+    if (searchParams.status) list = list.filter(c => c.status === searchParams.status);
     list.sort((a, b) => {
       let av = a[sortConfig.key], bv = b[sortConfig.key];
       if (sortConfig.key === 'job_change_date') { av = av ? new Date(av).getTime() : 0; bv = bv ? new Date(bv).getTime() : 0; }
@@ -213,22 +213,32 @@ export default function TalentRadar() {
       return sortConfig.direction === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
     });
     return list;
-  }, [allCandidates, searchParams, sortConfig]);
+  }, [candidates, searchParams, sortConfig]);
+
+  const filteredSearchResults = useMemo(() => {
+    let list = [...searchResults];
+    if (searchParams.industries.length) list = list.filter(c => searchParams.industries.includes(c.industry));
+    if (searchParams.jobLevels.length) list = list.filter(c => searchParams.jobLevels.includes(c.new_role));
+    if (searchParams.locations.length) list = list.filter(c => searchParams.locations.some(l => c.location?.includes(l.split(',')[0])));
+    return list;
+  }, [searchResults, searchParams]);
 
   const handleSort = (key) => setSortConfig(p => ({ key, direction: p.key === key && p.direction === 'desc' ? 'asc' : 'desc' }));
 
   const saveSearchResult = async (result) => {
     setIsSaving(true);
     const d = { ...result }; delete d.id; delete d.source;
-    const { data } = await supabase.from('candidates').insert([d]).select().single();
-    if (data) { setCandidates(p => [data, ...p]); setSearchResults(p => p.filter(r => r.id !== result.id)); await logActivity('candidate', 'Saved: ' + data.name); notify('Saved!'); }
+    const { data, error } = await supabase.from('candidates').insert([d]).select().single();
+    if (error) { console.error('Save error:', error); notify('Save failed', 'error'); }
+    else if (data) { setCandidates(p => [data, ...p]); setSearchResults(p => p.filter(r => r.id !== result.id)); await logActivity('candidate', 'Saved: ' + data.name); notify('Saved to Candidates!'); }
     setIsSaving(false);
   };
 
   const handleAddCandidate = async () => {
     setIsSaving(true);
-    const { data } = await supabase.from('candidates').insert([{ ...newCandidate, match_score: Math.floor(Math.random() * 30) + 70 }]).select().single();
-    if (data) { setCandidates(p => [data, ...p]); await logActivity('candidate', 'Added: ' + data.name); notify('Added!'); closeModal('addCandidate'); setNewCandidate({ name: '', email: '', location: '', previous_company: '', previous_title: '', previous_role: 'Mid Level', new_company: '', new_title: '', new_role: 'Mid Level', industry: 'Technology', job_change_date: '', status: 'new', change_type: 'lateral' }); }
+    const { data, error } = await supabase.from('candidates').insert([{ ...newCandidate, match_score: Math.floor(Math.random() * 30) + 70 }]).select().single();
+    if (error) { console.error('Add error:', error); notify('Add failed', 'error'); }
+    else if (data) { setCandidates(p => [data, ...p]); await logActivity('candidate', 'Added: ' + data.name); notify('Added!'); closeModal('addCandidate'); setNewCandidate({ name: '', email: '', location: '', previous_company: '', previous_title: '', previous_role: 'Mid Level', new_company: '', new_title: '', new_role: 'Mid Level', industry: 'Technology', job_change_date: '', status: 'new', change_type: 'lateral' }); }
     setIsSaving(false);
   };
 
@@ -262,14 +272,28 @@ export default function TalentRadar() {
     const subject = processTemplate(tmpl.subject, cand);
     const body = processTemplate(tmpl.body, cand);
     
-    // Send via API
     const result = await sendEmail(cand.email, subject, body, false);
     const status = result.success ? 'delivered' : 'failed';
     
-    const { data } = await supabase.from('sent_emails').insert([{ candidate_id: cand.id, candidate_name: cand.name, candidate_email: cand.email, template_id: tmpl.id, template_name: tmpl.name, subject, body, status, resend_id: result.id }]).select().single();
+    const { data, error } = await supabase.from('sent_emails').insert([{ 
+      candidate_id: cand.id?.toString().startsWith('sr-') ? null : cand.id, 
+      candidate_name: cand.name, 
+      candidate_email: cand.email, 
+      template_id: tmpl.id, 
+      template_name: tmpl.name, 
+      subject, 
+      body, 
+      status, 
+      resend_id: result.id || null 
+    }]).select().single();
+    
+    if (error) { console.error('Email log error:', error); }
     if (data) {
       setSentEmails(p => [data, ...p]);
-      if (!cand.id.toString().startsWith('sr-')) { await supabase.from('candidates').update({ status: 'contacted' }).eq('id', cand.id); setCandidates(p => p.map(c => c.id === cand.id ? { ...c, status: 'contacted' } : c)); }
+      if (cand.id && !cand.id.toString().startsWith('sr-')) { 
+        await supabase.from('candidates').update({ status: 'contacted' }).eq('id', cand.id); 
+        setCandidates(p => p.map(c => c.id === cand.id ? { ...c, status: 'contacted' } : c)); 
+      }
       await logActivity('email', (result.success ? '✅ Sent to ' : '❌ Failed: ') + cand.name + ' (' + cand.email + ')');
       notify(result.success ? 'Email sent!' : 'Failed: ' + result.error, result.success ? 'success' : 'error');
     }
@@ -279,9 +303,15 @@ export default function TalentRadar() {
   const handleAddFollowUp = async () => {
     if (!newFollowUp.date || !newFollowUp.candidate_name) return;
     setIsSaving(true);
-    const { data } = await supabase.from('follow_ups').insert([newFollowUp]).select().single();
-    if (data) { setFollowUps(p => [...p, data].sort((a, b) => new Date(a.date) - new Date(b.date))); await logActivity('followup', 'Scheduled: ' + newFollowUp.candidate_name); notify('Added!'); }
-    closeModal('followUp'); setNewFollowUp({ candidate_name: '', date: '', note: '' }); setIsSaving(false);
+    const { data, error } = await supabase.from('follow_ups').insert([{ 
+      candidate_id: newFollowUp.candidate_id || null,
+      candidate_name: newFollowUp.candidate_name, 
+      date: newFollowUp.date, 
+      note: newFollowUp.note 
+    }]).select().single();
+    if (error) { console.error('Follow-up error:', error); notify('Failed to add', 'error'); }
+    else if (data) { setFollowUps(p => [...p, data].sort((a, b) => new Date(a.date) - new Date(b.date))); await logActivity('followup', 'Scheduled: ' + newFollowUp.candidate_name); notify('Added!'); }
+    closeModal('followUp'); setNewFollowUp({ candidate_id: '', candidate_name: '', date: '', note: '' }); setIsSaving(false);
   };
 
   const toggleFollowUp = async (f) => { const { data } = await supabase.from('follow_ups').update({ completed: !f.completed }).eq('id', f.id).select().single(); if (data) { setFollowUps(p => p.map(x => x.id === data.id ? data : x)); await logActivity('followup', (data.completed ? 'Completed' : 'Reopened') + ': ' + f.candidate_name); } };
@@ -310,16 +340,44 @@ export default function TalentRadar() {
     setIsSaving(false); closeModal('sendTest'); setSelectedTestEmail(null); setSelectedTemplate(null);
   };
 
-  const saveSettings = async () => { setIsSaving(true); await supabase.from('settings').update(settings).eq('id', 1); await logActivity('settings', 'Updated settings'); notify('Saved!'); closeModal('settings'); setIsSaving(false); };
+  const saveSettings = async () => { setIsSaving(true); await supabase.from('settings').upsert({ id: 1, ...settings }); await logActivity('settings', 'Updated settings'); notify('Saved!'); closeModal('settings'); setIsSaving(false); };
   const exportData = () => { const blob = new Blob([JSON.stringify({ candidates, emailTemplates, sentEmails, followUps, activities, settings }, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'talent-radar.json'; a.click(); notify('Exported!'); };
   const getDaysInMonth = (d) => { const y = d.getFullYear(), m = d.getMonth(), first = new Date(y, m, 1), last = new Date(y, m + 1, 0), days = []; for (let i = 0; i < first.getDay(); i++) days.push(null); for (let i = 1; i <= last.getDate(); i++) days.push(new Date(y, m, i)); return days; };
   const getFollowUpsForDate = (d) => d ? followUps.filter(f => f.date === d.toISOString().split('T')[0]) : [];
-  const stats = useMemo(() => ({ total: allCandidates.length, results: searchResults.length, delivered: sentEmails.filter(e => e.status === 'delivered').length, pending: followUps.filter(f => !f.completed).length }), [allCandidates, searchResults, sentEmails, followUps]);
+  const stats = useMemo(() => ({ saved: candidates.length, results: searchResults.length, delivered: sentEmails.filter(e => e.status === 'delivered').length, pending: followUps.filter(f => !f.completed).length }), [candidates, searchResults, sentEmails, followUps]);
   const SortIcon = ({ col }) => sortConfig.key !== col ? <Icon name="chevronDown" size={12} color="#cbd5e1" /> : <Icon name={sortConfig.direction === 'asc' ? 'chevronUp' : 'chevronDown'} size={12} color="#3b82f6" />;
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-50 to-blue-100"><div className="w-12 h-12 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin" /></div>;
 
   const Modal = ({ id, children, wide }) => modals[id] && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => closeModal(id)}><div className={'bg-white rounded-2xl p-6 w-full max-h-[90vh] overflow-y-auto ' + (wide ? 'max-w-2xl' : 'max-w-lg')} onClick={e => e.stopPropagation()}>{children}</div></div>;
+
+  const CandidateTable = ({ data, showSave }) => (
+    <table className="w-full text-sm">
+      <thead><tr className="bg-slate-50 text-left text-xs font-bold text-slate-500 uppercase">
+        <th className="px-3 py-2 cursor-pointer" onClick={() => handleSort('name')}>Name <SortIcon col="name" /></th>
+        <th className="px-3 py-2">Previous</th>
+        <th className="px-2 py-2"></th>
+        <th className="px-3 py-2">New</th>
+        <th className="px-3 py-2 cursor-pointer" onClick={() => handleSort('job_change_date')}>Date <SortIcon col="job_change_date" /></th>
+        <th className="px-3 py-2">Status</th>
+        <th className="px-3 py-2">Actions</th>
+      </tr></thead>
+      <tbody className="divide-y">{data.map(c => <tr key={c.id} className={c.source === 'web_search' ? 'bg-violet-50/50' : ''}>
+        <td className="px-3 py-2"><div className="font-medium">{c.name}{c.source === 'web_search' && <span className="ml-1 text-xs bg-violet-100 text-violet-600 px-1 rounded">New</span>}</div><div className="text-xs text-slate-500">{c.location}</div></td>
+        <td className="px-3 py-2"><div className="bg-red-50 border border-red-200 rounded px-2 py-1 text-xs"><div className="font-medium text-red-800">{c.previous_title}</div><div className="text-red-600">{c.previous_company}</div></div></td>
+        <td className="px-1 py-2"><div className={'w-5 h-5 rounded-full flex items-center justify-center ' + (c.change_type === 'promotion' ? 'bg-emerald-100' : 'bg-violet-100')}><Icon name={c.change_type === 'promotion' ? 'arrowUp' : 'arrowRight'} size={12} color={c.change_type === 'promotion' ? '#10b981' : '#8b5cf6'} /></div></td>
+        <td className="px-3 py-2"><div className="bg-emerald-50 border border-emerald-200 rounded px-2 py-1 text-xs"><div className="font-medium text-emerald-800">{c.new_title}</div><div className="text-emerald-600">{c.new_company}</div></div></td>
+        <td className="px-3 py-2"><div className="text-xs">{c.job_change_date ? new Date(c.job_change_date).toLocaleDateString() : '-'}</div><div className="text-xs text-slate-400">{timeAgo(c.job_change_date)}</div></td>
+        <td className="px-3 py-2"><span className={'px-2 py-1 rounded text-xs font-medium ' + (c.status === 'contacted' ? 'bg-blue-100 text-blue-700' : c.status === 'responded' ? 'bg-emerald-100 text-emerald-700' : c.status === 'interviewing' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600')}>{c.status}</span></td>
+        <td className="px-3 py-2"><div className="flex gap-1">
+          <button onClick={() => { setSelectedCandidate(c); openModal('viewCandidate'); }} className="p-1.5 bg-slate-100 rounded hover:bg-slate-200" title="View"><Icon name="eye" size={12} color="#64748b" /></button>
+          {c.email && <button onClick={() => { setSelectedCandidate(c); openModal('sendEmail'); }} className="p-1.5 bg-blue-500 rounded hover:bg-blue-600" title="Send Email"><Icon name="send" size={12} color="white" /></button>}
+          {showSave && c.source === 'web_search' && <button onClick={() => saveSearchResult(c)} className="p-1.5 bg-emerald-500 rounded hover:bg-emerald-600" title="Save to Candidates"><Icon name="save" size={12} color="white" /></button>}
+          <button onClick={() => handleDeleteCandidate(c.id)} className="p-1.5 bg-red-50 rounded hover:bg-red-100" title="Delete"><Icon name="trash" size={12} color="#ef4444" /></button>
+        </div></td>
+      </tr>)}</tbody>
+    </table>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50 text-slate-700">
@@ -331,7 +389,7 @@ export default function TalentRadar() {
           <div><h1 className="text-xl font-bold text-blue-600">TalentRadar</h1><div className="text-xs" style={{ color: isConnected ? '#10b981' : '#ef4444' }}>{isConnected ? '● Connected' : '○ Offline'}</div></div>
         </div>
         <div className="flex gap-3 items-center">
-          {[{ l: 'Candidates', v: stats.total, c: '#3b82f6' }, { l: 'Results', v: stats.results, c: '#8b5cf6' }, { l: 'Delivered', v: stats.delivered, c: '#10b981' }].map((s, i) => <div key={i} className="text-center px-3 border-r last:border-0"><div className="text-lg font-bold" style={{ color: s.c }}>{s.v}</div><div className="text-xs text-slate-500">{s.l}</div></div>)}
+          {[{ l: 'Saved', v: stats.saved, c: '#3b82f6' }, { l: 'Results', v: stats.results, c: '#8b5cf6' }, { l: 'Emails', v: stats.delivered, c: '#10b981' }].map((s, i) => <div key={i} className="text-center px-3 border-r last:border-0"><div className="text-lg font-bold" style={{ color: s.c }}>{s.v}</div><div className="text-xs text-slate-500">{s.l}</div></div>)}
           <button onClick={loadAllData} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200"><Icon name="refresh" size={16} color="#64748b" /></button>
           <button onClick={exportData} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200"><Icon name="download" size={16} color="#64748b" /></button>
           <button onClick={() => openModal('settings')} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200"><Icon name="settings" size={16} color="#64748b" /></button>
@@ -339,7 +397,15 @@ export default function TalentRadar() {
       </header>
 
       <nav className="flex gap-2 px-6 py-3 bg-white/50 border-b overflow-x-auto">
-        {[{ id: 'dashboard', l: 'Dashboard', i: 'search' }, { id: 'candidates', l: 'Results', i: 'users' }, { id: 'emails', l: 'Emails', i: 'mail' }, { id: 'calendar', l: 'Calendar', i: 'calendar' }, { id: 'templates', l: 'Templates', i: 'file' }, { id: 'activity', l: 'Activity', i: 'activity' }].map(t => <button key={t.id} onClick={() => setActiveTab(t.id)} className={'px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-medium whitespace-nowrap ' + (activeTab === t.id ? 'bg-blue-500 text-white' : 'bg-white text-slate-600 hover:bg-slate-100')}><Icon name={t.i} size={16} color={activeTab === t.id ? 'white' : '#64748b'} />{t.l}</button>)}
+        {[
+          { id: 'dashboard', l: 'Dashboard', i: 'search' }, 
+          { id: 'candidates', l: 'Candidates', i: 'userCheck' }, 
+          { id: 'search', l: 'Search Results', i: 'globe' }, 
+          { id: 'emails', l: 'Emails', i: 'mail' }, 
+          { id: 'calendar', l: 'Calendar', i: 'calendar' }, 
+          { id: 'templates', l: 'Templates', i: 'file' }, 
+          { id: 'activity', l: 'Activity', i: 'activity' }
+        ].map(t => <button key={t.id} onClick={() => setActiveTab(t.id)} className={'px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-medium whitespace-nowrap ' + (activeTab === t.id ? 'bg-blue-500 text-white' : 'bg-white text-slate-600 hover:bg-slate-100')}><Icon name={t.i} size={16} color={activeTab === t.id ? 'white' : '#64748b'} />{t.l}{t.id === 'candidates' && candidates.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-xs">{candidates.length}</span>}{t.id === 'search' && searchResults.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-xs">{searchResults.length}</span>}</button>)}
       </nav>
 
       <main className="p-6">
@@ -392,50 +458,34 @@ export default function TalentRadar() {
 
         {activeTab === 'candidates' && <div className="space-y-4">
           <div className="bg-white rounded-2xl border p-4">
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-bold flex items-center gap-2"><Icon name="userCheck" size={20} color="#3b82f6" />Saved Candidates ({candidates.length})</h2>
+              <button onClick={() => openModal('addCandidate')} className="px-4 py-2 bg-blue-500 text-white rounded-xl font-medium flex items-center gap-2"><Icon name="plus" size={16} color="white" />Add Candidate</button>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl border overflow-hidden">
+            {!candidates.length ? <div className="p-12 text-center text-slate-400"><Icon name="users" size={48} color="#cbd5e1" /><p className="mt-4">No saved candidates yet</p><p className="text-sm">Search for job changes and save candidates here</p></div> : <div className="overflow-x-auto"><CandidateTable data={filteredCandidates} showSave={false} /></div>}
+          </div>
+        </div>}
+
+        {activeTab === 'search' && <div className="space-y-4">
+          <div className="bg-white rounded-2xl border p-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
               <MultiSelect label="Industry" options={industries} selected={searchParams.industries} onChange={v => setSearchParams(p => ({ ...p, industries: v }))} placeholder="All" />
               <MultiSelect label="Level" options={jobLevels} selected={searchParams.jobLevels} onChange={v => setSearchParams(p => ({ ...p, jobLevels: v }))} placeholder="All" />
               <MultiSelect label="Location" options={locationsList} selected={searchParams.locations} onChange={v => setSearchParams(p => ({ ...p, locations: v }))} placeholder="All" />
-              <div><label className="block text-xs font-medium text-slate-500 mb-1">Status</label><select className="w-full px-3 py-2 border rounded-xl text-sm" value={searchParams.status} onChange={e => setSearchParams(p => ({ ...p, status: e.target.value }))}><option value="">All</option>{statuses.map(s => <option key={s}>{s}</option>)}</select></div>
-              <div className="flex gap-2"><button onClick={searchJobChanges} disabled={isSearching} className="flex-1 py-2 bg-violet-500 text-white rounded-xl font-medium">{isSearching ? '...' : 'Search'}</button><button onClick={() => openModal('addCandidate')} className="py-2 px-3 bg-blue-500 text-white rounded-xl"><Icon name="plus" size={16} color="white" /></button></div>
+              <div className="flex gap-2 col-span-2"><button onClick={searchJobChanges} disabled={isSearching} className="flex-1 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-medium">{isSearching ? 'Searching...' : 'Search'}</button>{searchResults.length > 0 && <button onClick={() => setSearchResults([])} className="px-4 py-2 border rounded-xl text-red-500">Clear</button>}</div>
             </div>
           </div>
-
           <div className="bg-white rounded-2xl border overflow-hidden">
-            <div className="px-4 py-3 border-b flex justify-between items-center"><h3 className="font-bold">{filteredCandidates.length} Candidates</h3>{searchResults.length > 0 && <button onClick={() => setSearchResults([])} className="text-xs text-red-500">Clear results</button>}</div>
-            {!filteredCandidates.length ? <div className="p-12 text-center text-slate-400">No candidates. Try searching!</div> : <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="bg-slate-50 text-left text-xs font-bold text-slate-500 uppercase">
-                  <th className="px-3 py-2 cursor-pointer" onClick={() => handleSort('name')}>Name <SortIcon col="name" /></th>
-                  <th className="px-3 py-2">Previous</th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-3 py-2">New</th>
-                  <th className="px-3 py-2 cursor-pointer" onClick={() => handleSort('job_change_date')}>Date <SortIcon col="job_change_date" /></th>
-                  <th className="px-3 py-2 cursor-pointer" onClick={() => handleSort('match_score')}>Match <SortIcon col="match_score" /></th>
-                  <th className="px-3 py-2">Actions</th>
-                </tr></thead>
-                <tbody className="divide-y">{filteredCandidates.map(c => <tr key={c.id} className={c.source === 'web_search' ? 'bg-violet-50/50' : ''}>
-                  <td className="px-3 py-2"><div className="font-medium">{c.name}{c.source === 'web_search' && <span className="ml-1 text-xs bg-violet-100 text-violet-600 px-1 rounded">New</span>}</div><div className="text-xs text-slate-500">{c.location}</div></td>
-                  <td className="px-3 py-2"><div className="bg-red-50 border border-red-200 rounded px-2 py-1 text-xs"><div className="font-medium text-red-800">{c.previous_title}</div><div className="text-red-600">{c.previous_company}</div></div></td>
-                  <td className="px-1 py-2"><div className={'w-5 h-5 rounded-full flex items-center justify-center ' + (c.change_type === 'promotion' ? 'bg-emerald-100' : 'bg-violet-100')}><Icon name={c.change_type === 'promotion' ? 'arrowUp' : 'arrowRight'} size={12} color={c.change_type === 'promotion' ? '#10b981' : '#8b5cf6'} /></div></td>
-                  <td className="px-3 py-2"><div className="bg-emerald-50 border border-emerald-200 rounded px-2 py-1 text-xs"><div className="font-medium text-emerald-800">{c.new_title}</div><div className="text-emerald-600">{c.new_company}</div></div></td>
-                  <td className="px-3 py-2"><div className="text-xs">{c.job_change_date ? new Date(c.job_change_date).toLocaleDateString() : '-'}</div><div className="text-xs text-slate-400">{timeAgo(c.job_change_date)}</div></td>
-                  <td className="px-3 py-2"><div className="flex items-center gap-1"><div className="w-8 h-1.5 bg-slate-200 rounded-full"><div className="h-full bg-blue-500 rounded-full" style={{ width: (c.match_score || 0) + '%' }} /></div><span className="text-xs font-medium">{c.match_score}%</span></div></td>
-                  <td className="px-3 py-2"><div className="flex gap-1">
-                    <button onClick={() => { setSelectedCandidate(c); openModal('viewCandidate'); }} className="p-1.5 bg-slate-100 rounded hover:bg-slate-200"><Icon name="eye" size={12} color="#64748b" /></button>
-                    {c.email && <button onClick={() => { setSelectedCandidate(c); openModal('sendEmail'); }} className="p-1.5 bg-blue-500 rounded hover:bg-blue-600"><Icon name="send" size={12} color="white" /></button>}
-                    {c.source === 'web_search' && <button onClick={() => saveSearchResult(c)} className="p-1.5 bg-emerald-100 rounded hover:bg-emerald-200"><Icon name="download" size={12} color="#10b981" /></button>}
-                    <button onClick={() => handleDeleteCandidate(c.id)} className="p-1.5 bg-red-50 rounded hover:bg-red-100"><Icon name="trash" size={12} color="#ef4444" /></button>
-                  </div></td>
-                </tr>)}</tbody>
-              </table>
-            </div>}
+            <div className="px-4 py-3 border-b"><h3 className="font-bold">Search Results ({filteredSearchResults.length})</h3></div>
+            {!searchResults.length ? <div className="p-12 text-center text-slate-400"><Icon name="search" size={48} color="#cbd5e1" /><p className="mt-4">No search results</p><p className="text-sm">Use the search on Dashboard to find job changes</p></div> : <div className="overflow-x-auto"><CandidateTable data={filteredSearchResults} showSave={true} /></div>}
           </div>
         </div>}
 
         {activeTab === 'emails' && <div className="bg-white rounded-2xl border overflow-hidden">
-          <div className="px-4 py-3 border-b flex justify-between items-center"><h3 className="font-bold">Emails ({sentEmails.length})</h3><div className="flex gap-2 text-xs"><span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded">✓ {sentEmails.filter(e => e.status === 'delivered').length}</span><span className="px-2 py-1 bg-red-100 text-red-700 rounded">✗ {sentEmails.filter(e => e.status === 'failed').length}</span></div></div>
-          {!sentEmails.length ? <div className="p-12 text-center text-slate-400">No emails sent yet</div> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-slate-50 text-left text-xs font-bold text-slate-500"><th className="px-3 py-2">To</th><th className="px-3 py-2">Subject</th><th className="px-3 py-2">Template</th><th className="px-3 py-2">Sent</th><th className="px-3 py-2">Status</th></tr></thead><tbody className="divide-y">{sentEmails.map(e => <tr key={e.id}><td className="px-3 py-2"><div className="font-medium">{e.candidate_name}</div><div className="text-xs text-slate-500">{e.candidate_email}</div></td><td className="px-3 py-2 max-w-xs truncate">{e.subject}</td><td className="px-3 py-2">{e.template_name}</td><td className="px-3 py-2 text-slate-500">{new Date(e.sent_at).toLocaleString()}</td><td className="px-3 py-2"><span className={'px-2 py-1 rounded text-xs font-medium ' + (e.status === 'delivered' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700')}>{e.status}</span></td></tr>)}</tbody></table></div>}
+          <div className="px-4 py-3 border-b flex justify-between items-center"><h3 className="font-bold">Sent Emails ({sentEmails.length})</h3><div className="flex gap-2 text-xs"><span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded">✓ {sentEmails.filter(e => e.status === 'delivered').length} delivered</span><span className="px-2 py-1 bg-red-100 text-red-700 rounded">✗ {sentEmails.filter(e => e.status === 'failed').length} failed</span></div></div>
+          {!sentEmails.length ? <div className="p-12 text-center text-slate-400"><Icon name="mail" size={48} color="#cbd5e1" /><p className="mt-4">No emails sent yet</p><p className="text-sm">Send emails to candidates to see them here</p></div> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-slate-50 text-left text-xs font-bold text-slate-500"><th className="px-3 py-2">To</th><th className="px-3 py-2">Subject</th><th className="px-3 py-2">Template</th><th className="px-3 py-2">Sent</th><th className="px-3 py-2">Status</th></tr></thead><tbody className="divide-y">{sentEmails.map(e => <tr key={e.id}><td className="px-3 py-2"><div className="font-medium">{e.candidate_name}</div><div className="text-xs text-slate-500">{e.candidate_email}</div></td><td className="px-3 py-2 max-w-xs truncate">{e.subject}</td><td className="px-3 py-2">{e.template_name}</td><td className="px-3 py-2 text-slate-500">{new Date(e.sent_at).toLocaleString()}</td><td className="px-3 py-2"><span className={'px-2 py-1 rounded text-xs font-medium ' + (e.status === 'delivered' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700')}>{e.status}</span></td></tr>)}</tbody></table></div>}
         </div>}
 
         {activeTab === 'calendar' && <div className="grid md:grid-cols-3 gap-6">
@@ -445,7 +495,7 @@ export default function TalentRadar() {
             <div className="grid grid-cols-7 gap-1">{getDaysInMonth(currentMonth).map((d, i) => { const fups = getFollowUpsForDate(d); const isToday = d && d.toDateString() === new Date().toDateString(); return <div key={i} onClick={() => d && (setNewFollowUp(p => ({ ...p, date: d.toISOString().split('T')[0] })), openModal('followUp'))} className={'min-h-[60px] p-1 rounded cursor-pointer text-sm ' + (isToday ? 'bg-blue-100 border-2 border-blue-500' : d ? 'bg-slate-50 hover:bg-slate-100' : '')}>{d && <><div className={'font-medium ' + (isToday ? 'text-blue-600' : '')}>{d.getDate()}</div>{fups.slice(0, 2).map(f => <div key={f.id} className={'text-xs px-1 rounded truncate mt-0.5 ' + (f.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}>{f.candidate_name}</div>)}</>}</div>; })}</div>
           </div>
           <div className="bg-white rounded-2xl border p-6">
-            <div className="flex justify-between items-center mb-4"><h3 className="font-bold">Follow-ups ({stats.pending})</h3><button onClick={() => openModal('followUp')} className="p-2 bg-blue-50 rounded hover:bg-blue-100"><Icon name="plus" size={16} color="#3b82f6" /></button></div>
+            <div className="flex justify-between items-center mb-4"><h3 className="font-bold">Follow-ups ({stats.pending})</h3><button onClick={() => { setNewFollowUp({ candidate_id: '', candidate_name: '', date: '', note: '' }); openModal('followUp'); }} className="p-2 bg-blue-50 rounded hover:bg-blue-100"><Icon name="plus" size={16} color="#3b82f6" /></button></div>
             <div className="space-y-2 max-h-80 overflow-y-auto">{followUps.filter(f => !f.completed).map(f => <div key={f.id} className="p-3 bg-slate-50 rounded-xl flex justify-between items-start"><div><div className="font-medium">{f.candidate_name}</div><div className="text-sm text-blue-600">{new Date(f.date).toLocaleDateString()}</div>{f.note && <div className="text-xs text-slate-500 mt-1">{f.note}</div>}</div><div className="flex gap-1"><button onClick={() => toggleFollowUp(f)} className="p-1.5 bg-emerald-100 rounded hover:bg-emerald-200"><Icon name="check" size={12} color="#10b981" /></button><button onClick={() => deleteFollowUp(f.id)} className="p-1.5 bg-red-100 rounded hover:bg-red-200"><Icon name="x" size={12} color="#ef4444" /></button></div></div>)}{!followUps.filter(f => !f.completed).length && <p className="text-slate-400 text-center py-6">No pending follow-ups</p>}</div>
           </div>
         </div>}
@@ -490,7 +540,7 @@ export default function TalentRadar() {
           {selectedCandidate.job_change_date && <p><strong>Changed:</strong> {new Date(selectedCandidate.job_change_date).toLocaleDateString()}</p>}
         </div>
         <div className="flex gap-2 justify-end pt-3 border-t">
-          {selectedCandidate.source === 'web_search' && <button onClick={() => { saveSearchResult(selectedCandidate); closeModal('viewCandidate'); }} className="px-3 py-2 bg-emerald-100 text-emerald-700 rounded-xl text-sm">Save</button>}
+          {selectedCandidate.source === 'web_search' && <button onClick={() => { saveSearchResult(selectedCandidate); closeModal('viewCandidate'); }} className="px-3 py-2 bg-emerald-500 text-white rounded-xl text-sm">Save to Candidates</button>}
           <button onClick={() => handleDeleteCandidate(selectedCandidate.id)} className="px-3 py-2 bg-red-50 text-red-600 rounded-xl text-sm">Delete</button>
           {selectedCandidate.email && <button onClick={() => { closeModal('viewCandidate'); openModal('sendEmail'); }} className="px-3 py-2 bg-blue-500 text-white rounded-xl text-sm">Send Email</button>}
         </div>
@@ -515,9 +565,16 @@ export default function TalentRadar() {
 
       <Modal id="followUp"><h2 className="text-xl font-bold mb-4">Add Follow-up</h2>
         <div className="space-y-3">
-          <div><label className="block text-xs font-medium mb-1">Candidate *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={newFollowUp.candidate_name} onChange={e => setNewFollowUp(p => ({ ...p, candidate_name: e.target.value }))} /></div>
+          <div>
+            <label className="block text-xs font-medium mb-1">Candidate *</label>
+            <select className="w-full px-3 py-2 border rounded-xl text-sm" value={newFollowUp.candidate_id} onChange={e => { const c = candidates.find(x => x.id.toString() === e.target.value); setNewFollowUp(p => ({ ...p, candidate_id: e.target.value, candidate_name: c ? c.name : '' })); }}>
+              <option value="">Select a candidate...</option>
+              {candidates.map(c => <option key={c.id} value={c.id}>{c.name} - {c.new_company}</option>)}
+            </select>
+            {!candidates.length && <p className="text-xs text-amber-600 mt-1">No saved candidates. Save some first!</p>}
+          </div>
           <div><label className="block text-xs font-medium mb-1">Date *</label><input type="date" className="w-full px-3 py-2 border rounded-xl text-sm" value={newFollowUp.date} onChange={e => setNewFollowUp(p => ({ ...p, date: e.target.value }))} /></div>
-          <div><label className="block text-xs font-medium mb-1">Note</label><textarea className="w-full px-3 py-2 border rounded-xl text-sm" rows={2} value={newFollowUp.note} onChange={e => setNewFollowUp(p => ({ ...p, note: e.target.value }))} /></div>
+          <div><label className="block text-xs font-medium mb-1">Note</label><textarea className="w-full px-3 py-2 border rounded-xl text-sm" rows={2} value={newFollowUp.note} onChange={e => setNewFollowUp(p => ({ ...p, note: e.target.value }))} placeholder="e.g. Check if they responded" /></div>
         </div>
         <div className="flex gap-3 justify-end mt-4 pt-3 border-t"><button onClick={() => closeModal('followUp')} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={handleAddFollowUp} disabled={!newFollowUp.candidate_name || !newFollowUp.date || isSaving} className="px-4 py-2 bg-blue-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Adding...' : 'Add'}</button></div>
       </Modal>
@@ -543,7 +600,7 @@ export default function TalentRadar() {
         <div className="space-y-3">
           <div><label className="block text-xs font-medium mb-1">Your Name</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={settings.sender_name || ''} onChange={e => setSettings(p => ({ ...p, sender_name: e.target.value }))} /><p className="text-xs text-slate-400 mt-1">{"{{senderName}}"}</p></div>
           <div><label className="block text-xs font-medium mb-1">Company</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={settings.company_name || ''} onChange={e => setSettings(p => ({ ...p, company_name: e.target.value }))} /><p className="text-xs text-slate-400 mt-1">{"{{company}}"}</p></div>
-          <div className="border-t pt-3"><p className="text-sm font-medium mb-2">Email Config</p><div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3"><p className="text-sm text-emerald-700">✓ Resend API connected</p><p className="text-xs text-emerald-600">From: onboarding@resend.dev</p><p className="text-xs text-emerald-600">Tests: {TEST_EMAIL}</p></div></div>
+          <div className="border-t pt-3"><p className="text-sm font-medium mb-2">Email Config</p><div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3"><p className="text-sm text-emerald-700">✓ Resend API connected</p><p className="text-xs text-emerald-600">From: onboarding@resend.dev</p><p className="text-xs text-emerald-600">Reply-to: {TEST_EMAIL}</p></div></div>
         </div>
         <div className="flex gap-3 justify-end mt-4 pt-3 border-t"><button onClick={() => closeModal('settings')} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={saveSettings} disabled={isSaving} className="px-4 py-2 bg-blue-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Saving...' : 'Save'}</button></div>
       </Modal>
