@@ -5,13 +5,23 @@ const supabaseUrl = 'https://reaqaxufwxcvarypfsdz.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJlYXFheHVmd3hjdmFyeXBmc2R6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0NzQwMzQsImV4cCI6MjA4NTA1MDAzNH0.8uvcFSRNQQDBH7GtxnaNhdv96iAiComLosBEtxEw818';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-const RESEND_API_KEY = 're_d6hCPoBY_6MAenZgjWz5R8dZ5WCmyySqD';
-const FROM_EMAIL = 'onboarding@resend.dev';
 const TEST_EMAIL = 'erbyrd22@gmail.com';
 
-// Note: Direct Resend API calls from browser are blocked by CORS
-// For now, we'll log emails to database and open mailto: link as fallback
-// To enable real sending, you need a Supabase Edge Function or Vercel API route
+// Send email via our Vercel API route
+const sendEmail = async (to, subject, body, isTest = false) => {
+  try {
+    const response = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, subject, body, isTest }),
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Email error:', error);
+    return { success: false, error: error.message };
+  }
+};
 
 const Icon = ({ name, size = 20, color = "currentColor" }) => {
   const icons = {
@@ -40,7 +50,6 @@ const Icon = ({ name, size = 20, color = "currentColor" }) => {
     globe: <><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></>,
     mapPin: <><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></>,
     search: <><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>,
-    externalLink: <><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icons[name]}</svg>;
 };
@@ -83,11 +92,9 @@ const generateSearchResults = (industries, levels, locations, dateStart, dateEnd
   const locs = locations.length ? locations : ['New York, NY','San Francisco, CA','Los Angeles, CA','Chicago, IL','Boston, MA','Seattle, WA','Austin, TX','Denver, CO','Atlanta, GA','Charlotte, NC','Dallas, TX','Miami, FL'];
   const inds = industries.length ? industries : Object.keys(companies);
   const lvls = levels.length ? levels : Object.keys(titles);
-  
   const startDate = dateStart ? new Date(dateStart) : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
   const endDate = dateEnd ? new Date(dateEnd) : new Date();
   const dateRange = endDate - startDate;
-  
   const results = [];
   for (let i = 0; i < count; i++) {
     const ind = inds[Math.floor(Math.random() * inds.length)];
@@ -173,12 +180,7 @@ export default function TalentRadar() {
 
   const searchJobChanges = async () => {
     setIsSearching(true);
-    const txt = [
-      searchParams.industries.length ? searchParams.industries.join(', ') : 'All Industries',
-      searchParams.jobLevels.length ? searchParams.jobLevels.join(', ') : 'All Levels',
-      searchParams.locations.length ? searchParams.locations.join(', ') : 'All Locations',
-      searchParams.dateStart || searchParams.dateEnd ? `${searchParams.dateStart || 'any'} to ${searchParams.dateEnd || 'now'}` : 'Last 90 days'
-    ].join(' | ');
+    const txt = [searchParams.industries.length ? searchParams.industries.join(', ') : 'All Industries', searchParams.jobLevels.length ? searchParams.jobLevels.join(', ') : 'All Levels', searchParams.locations.length ? searchParams.locations.join(', ') : 'All Locations', searchParams.dateStart || searchParams.dateEnd ? (searchParams.dateStart || 'any') + ' to ' + (searchParams.dateEnd || 'now') : 'Last 90 days'].join(' | ');
     await logActivity('search', 'Search: ' + txt);
     setTimeout(() => {
       const results = generateSearchResults(searchParams.industries, searchParams.jobLevels, searchParams.locations, searchParams.dateStart, searchParams.dateEnd, 15);
@@ -260,31 +262,16 @@ export default function TalentRadar() {
     const subject = processTemplate(tmpl.subject, cand);
     const body = processTemplate(tmpl.body, cand);
     
-    // Log to database
-    const { data } = await supabase.from('sent_emails').insert([{ 
-      candidate_id: cand.id, 
-      candidate_name: cand.name, 
-      candidate_email: cand.email, 
-      template_id: tmpl.id, 
-      template_name: tmpl.name, 
-      subject, 
-      body, 
-      status: 'pending'
-    }]).select().single();
+    // Send via API
+    const result = await sendEmail(cand.email, subject, body, false);
+    const status = result.success ? 'delivered' : 'failed';
     
+    const { data } = await supabase.from('sent_emails').insert([{ candidate_id: cand.id, candidate_name: cand.name, candidate_email: cand.email, template_id: tmpl.id, template_name: tmpl.name, subject, body, status, resend_id: result.id }]).select().single();
     if (data) {
       setSentEmails(p => [data, ...p]);
-      if (!cand.id.toString().startsWith('sr-')) { 
-        await supabase.from('candidates').update({ status: 'contacted' }).eq('id', cand.id); 
-        setCandidates(p => p.map(c => c.id === cand.id ? { ...c, status: 'contacted' } : c)); 
-      }
-      await logActivity('email', 'Email logged for ' + cand.name + ' (' + cand.email + ')');
-      
-      // Open mailto link as fallback
-      const mailtoLink = `mailto:${cand.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      window.open(mailtoLink, '_blank');
-      
-      notify('Email opened in your mail app!');
+      if (!cand.id.toString().startsWith('sr-')) { await supabase.from('candidates').update({ status: 'contacted' }).eq('id', cand.id); setCandidates(p => p.map(c => c.id === cand.id ? { ...c, status: 'contacted' } : c)); }
+      await logActivity('email', (result.success ? '✅ Sent to ' : '❌ Failed: ') + cand.name + ' (' + cand.email + ')');
+      notify(result.success ? 'Email sent!' : 'Failed: ' + result.error, result.success ? 'success' : 'error');
     }
     closeModal('sendEmail'); setSelectedCandidate(null); setSelectedTemplate(null); setIsSaving(false);
   };
@@ -317,13 +304,9 @@ export default function TalentRadar() {
     const subject = '[TEST] ' + processTemplate(selectedTemplate.subject, cand);
     const body = processTemplate(selectedTemplate.body, cand);
     
-    await logActivity('test', 'Test email prepared for ' + selectedTestEmail.email);
-    
-    // Open mailto link
-    const mailtoLink = `mailto:${selectedTestEmail.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.open(mailtoLink, '_blank');
-    
-    notify('Test email opened in your mail app!');
+    const result = await sendEmail(selectedTestEmail.email, subject, body, true);
+    await logActivity('test', (result.success ? '✅ Test sent to ' : '❌ Test failed: ') + TEST_EMAIL);
+    notify(result.success ? 'Test sent to ' + TEST_EMAIL + '!' : 'Failed: ' + result.error, result.success ? 'success' : 'error');
     setIsSaving(false); closeModal('sendTest'); setSelectedTestEmail(null); setSelectedTemplate(null);
   };
 
@@ -331,7 +314,7 @@ export default function TalentRadar() {
   const exportData = () => { const blob = new Blob([JSON.stringify({ candidates, emailTemplates, sentEmails, followUps, activities, settings }, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'talent-radar.json'; a.click(); notify('Exported!'); };
   const getDaysInMonth = (d) => { const y = d.getFullYear(), m = d.getMonth(), first = new Date(y, m, 1), last = new Date(y, m + 1, 0), days = []; for (let i = 0; i < first.getDay(); i++) days.push(null); for (let i = 1; i <= last.getDate(); i++) days.push(new Date(y, m, i)); return days; };
   const getFollowUpsForDate = (d) => d ? followUps.filter(f => f.date === d.toISOString().split('T')[0]) : [];
-  const stats = useMemo(() => ({ total: allCandidates.length, results: searchResults.length, emails: sentEmails.length, pending: followUps.filter(f => !f.completed).length }), [allCandidates, searchResults, sentEmails, followUps]);
+  const stats = useMemo(() => ({ total: allCandidates.length, results: searchResults.length, delivered: sentEmails.filter(e => e.status === 'delivered').length, pending: followUps.filter(f => !f.completed).length }), [allCandidates, searchResults, sentEmails, followUps]);
   const SortIcon = ({ col }) => sortConfig.key !== col ? <Icon name="chevronDown" size={12} color="#cbd5e1" /> : <Icon name={sortConfig.direction === 'asc' ? 'chevronUp' : 'chevronDown'} size={12} color="#3b82f6" />;
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-50 to-blue-100"><div className="w-12 h-12 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin" /></div>;
@@ -348,7 +331,7 @@ export default function TalentRadar() {
           <div><h1 className="text-xl font-bold text-blue-600">TalentRadar</h1><div className="text-xs" style={{ color: isConnected ? '#10b981' : '#ef4444' }}>{isConnected ? '● Connected' : '○ Offline'}</div></div>
         </div>
         <div className="flex gap-3 items-center">
-          {[{ l: 'Candidates', v: stats.total, c: '#3b82f6' }, { l: 'Results', v: stats.results, c: '#8b5cf6' }, { l: 'Emails', v: stats.emails, c: '#10b981' }].map((s, i) => <div key={i} className="text-center px-3 border-r last:border-0"><div className="text-lg font-bold" style={{ color: s.c }}>{s.v}</div><div className="text-xs text-slate-500">{s.l}</div></div>)}
+          {[{ l: 'Candidates', v: stats.total, c: '#3b82f6' }, { l: 'Results', v: stats.results, c: '#8b5cf6' }, { l: 'Delivered', v: stats.delivered, c: '#10b981' }].map((s, i) => <div key={i} className="text-center px-3 border-r last:border-0"><div className="text-lg font-bold" style={{ color: s.c }}>{s.v}</div><div className="text-xs text-slate-500">{s.l}</div></div>)}
           <button onClick={loadAllData} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200"><Icon name="refresh" size={16} color="#64748b" /></button>
           <button onClick={exportData} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200"><Icon name="download" size={16} color="#64748b" /></button>
           <button onClick={() => openModal('settings')} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200"><Icon name="settings" size={16} color="#64748b" /></button>
@@ -393,7 +376,8 @@ export default function TalentRadar() {
 
             <div className="bg-white rounded-2xl border p-6">
               <div className="flex justify-between items-center mb-2"><h3 className="font-bold">Test Emails</h3></div>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+              <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2 mb-3">Tests go to: {TEST_EMAIL}</p>
+              <div className="space-y-2 max-h-36 overflow-y-auto">
                 {testEmails.map(t => <div key={t.id} className="p-2 bg-emerald-50 rounded-xl flex justify-between items-center"><div className="truncate"><div className="font-medium text-sm text-emerald-800 truncate">{t.name}</div><div className="text-xs text-emerald-600 truncate">{t.email}</div></div><div className="flex gap-1"><button onClick={() => { setSelectedTestEmail(t); openModal('sendTest'); }} className="px-2 py-1 bg-emerald-500 text-white rounded text-xs">Test</button><button onClick={() => deleteTestEmail(t.id)} className="p-1"><Icon name="trash" size={12} color="#ef4444" /></button></div></div>)}
                 {!testEmails.length && <p className="text-slate-400 text-sm text-center py-4">No test emails</p>}
               </div>
@@ -450,8 +434,8 @@ export default function TalentRadar() {
         </div>}
 
         {activeTab === 'emails' && <div className="bg-white rounded-2xl border overflow-hidden">
-          <div className="px-4 py-3 border-b"><h3 className="font-bold">Emails ({sentEmails.length})</h3></div>
-          {!sentEmails.length ? <div className="p-12 text-center text-slate-400">No emails sent yet</div> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-slate-50 text-left text-xs font-bold text-slate-500"><th className="px-3 py-2">To</th><th className="px-3 py-2">Subject</th><th className="px-3 py-2">Template</th><th className="px-3 py-2">Sent</th><th className="px-3 py-2">Status</th></tr></thead><tbody className="divide-y">{sentEmails.map(e => <tr key={e.id}><td className="px-3 py-2"><div className="font-medium">{e.candidate_name}</div><div className="text-xs text-slate-500">{e.candidate_email}</div></td><td className="px-3 py-2 max-w-xs truncate">{e.subject}</td><td className="px-3 py-2">{e.template_name}</td><td className="px-3 py-2 text-slate-500">{new Date(e.sent_at).toLocaleString()}</td><td className="px-3 py-2"><span className={'px-2 py-1 rounded text-xs font-medium ' + (e.status === 'delivered' ? 'bg-emerald-100 text-emerald-700' : e.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')}>{e.status}</span></td></tr>)}</tbody></table></div>}
+          <div className="px-4 py-3 border-b flex justify-between items-center"><h3 className="font-bold">Emails ({sentEmails.length})</h3><div className="flex gap-2 text-xs"><span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded">✓ {sentEmails.filter(e => e.status === 'delivered').length}</span><span className="px-2 py-1 bg-red-100 text-red-700 rounded">✗ {sentEmails.filter(e => e.status === 'failed').length}</span></div></div>
+          {!sentEmails.length ? <div className="p-12 text-center text-slate-400">No emails sent yet</div> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-slate-50 text-left text-xs font-bold text-slate-500"><th className="px-3 py-2">To</th><th className="px-3 py-2">Subject</th><th className="px-3 py-2">Template</th><th className="px-3 py-2">Sent</th><th className="px-3 py-2">Status</th></tr></thead><tbody className="divide-y">{sentEmails.map(e => <tr key={e.id}><td className="px-3 py-2"><div className="font-medium">{e.candidate_name}</div><div className="text-xs text-slate-500">{e.candidate_email}</div></td><td className="px-3 py-2 max-w-xs truncate">{e.subject}</td><td className="px-3 py-2">{e.template_name}</td><td className="px-3 py-2 text-slate-500">{new Date(e.sent_at).toLocaleString()}</td><td className="px-3 py-2"><span className={'px-2 py-1 rounded text-xs font-medium ' + (e.status === 'delivered' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700')}>{e.status}</span></td></tr>)}</tbody></table></div>}
         </div>}
 
         {activeTab === 'calendar' && <div className="grid md:grid-cols-3 gap-6">
@@ -514,10 +498,9 @@ export default function TalentRadar() {
 
       <Modal id="sendEmail">{selectedCandidate && <><h2 className="text-xl font-bold mb-4">Email {selectedCandidate.name}</h2>
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4"><p className="text-blue-800">{selectedCandidate.email}</p></div>
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4"><p className="text-xs text-amber-700"><Icon name="externalLink" size={12} color="#d97706" /> Email will open in your default mail app</p></div>
         <p className="text-xs font-medium text-slate-500 mb-2">Select Template</p>
         <div className="space-y-2 max-h-48 overflow-y-auto mb-4">{emailTemplates.map(t => <div key={t.id} onClick={() => setSelectedTemplate(t)} className={'p-3 rounded-xl cursor-pointer border ' + (selectedTemplate?.id === t.id ? 'bg-blue-100 border-blue-500' : 'bg-slate-50 hover:bg-slate-100')}><p className="font-medium text-sm">{t.name}</p><p className="text-xs text-slate-500">{t.subject}</p></div>)}{!emailTemplates.length && <p className="text-slate-400 text-center py-4">Create a template first</p>}</div>
-        <div className="flex gap-3 justify-end pt-3 border-t"><button onClick={() => { closeModal('sendEmail'); setSelectedCandidate(null); setSelectedTemplate(null); }} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={() => handleSendEmail(selectedCandidate, selectedTemplate)} disabled={!selectedTemplate || isSaving} className="px-4 py-2 bg-blue-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Opening...' : 'Open Email'}</button></div>
+        <div className="flex gap-3 justify-end pt-3 border-t"><button onClick={() => { closeModal('sendEmail'); setSelectedCandidate(null); setSelectedTemplate(null); }} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={() => handleSendEmail(selectedCandidate, selectedTemplate)} disabled={!selectedTemplate || isSaving} className="px-4 py-2 bg-blue-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Sending...' : 'Send Email'}</button></div>
       </>}</Modal>
 
       <Modal id="template"><h2 className="text-xl font-bold mb-4">{editingTemplate ? 'Edit' : 'New'} Template</h2>
@@ -549,17 +532,18 @@ export default function TalentRadar() {
       </Modal>
 
       <Modal id="sendTest">{selectedTestEmail && <><h2 className="text-xl font-bold mb-4">Send Test</h2>
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4"><p className="text-sm text-emerald-700">To: <strong>{selectedTestEmail.email}</strong></p></div>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4"><p className="text-sm text-amber-700">Will send to: <strong>{TEST_EMAIL}</strong></p></div>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4"><p className="text-sm text-emerald-700">Testing as: <strong>{selectedTestEmail.name}</strong></p></div>
         <p className="text-xs font-medium text-slate-500 mb-2">Select Template</p>
         <div className="space-y-2 max-h-40 overflow-y-auto mb-4">{emailTemplates.map(t => <div key={t.id} onClick={() => setSelectedTemplate(t)} className={'p-3 rounded-xl cursor-pointer border ' + (selectedTemplate?.id === t.id ? 'bg-emerald-100 border-emerald-500' : 'bg-slate-50 hover:bg-slate-100')}><p className="font-medium text-sm">{t.name}</p></div>)}</div>
-        <div className="flex gap-3 justify-end pt-3 border-t"><button onClick={() => { closeModal('sendTest'); setSelectedTestEmail(null); setSelectedTemplate(null); }} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={handleSendTest} disabled={!selectedTemplate || isSaving} className="px-4 py-2 bg-emerald-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Opening...' : 'Open Email'}</button></div>
+        <div className="flex gap-3 justify-end pt-3 border-t"><button onClick={() => { closeModal('sendTest'); setSelectedTestEmail(null); setSelectedTemplate(null); }} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={handleSendTest} disabled={!selectedTemplate || isSaving} className="px-4 py-2 bg-emerald-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Sending...' : 'Send Test'}</button></div>
       </>}</Modal>
 
       <Modal id="settings"><h2 className="text-xl font-bold mb-4">Settings</h2>
         <div className="space-y-3">
           <div><label className="block text-xs font-medium mb-1">Your Name</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={settings.sender_name || ''} onChange={e => setSettings(p => ({ ...p, sender_name: e.target.value }))} /><p className="text-xs text-slate-400 mt-1">{"{{senderName}}"}</p></div>
           <div><label className="block text-xs font-medium mb-1">Company</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={settings.company_name || ''} onChange={e => setSettings(p => ({ ...p, company_name: e.target.value }))} /><p className="text-xs text-slate-400 mt-1">{"{{company}}"}</p></div>
-          <div className="border-t pt-3"><p className="text-sm font-medium mb-2">Email Delivery</p><div className="bg-amber-50 border border-amber-200 rounded-xl p-3"><p className="text-sm text-amber-700">Emails open in your default mail app (Outlook, Gmail, etc.)</p><p className="text-xs text-amber-600 mt-1">For automated sending, a backend service is required.</p></div></div>
+          <div className="border-t pt-3"><p className="text-sm font-medium mb-2">Email Config</p><div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3"><p className="text-sm text-emerald-700">✓ Resend API connected</p><p className="text-xs text-emerald-600">From: onboarding@resend.dev</p><p className="text-xs text-emerald-600">Tests: {TEST_EMAIL}</p></div></div>
         </div>
         <div className="flex gap-3 justify-end mt-4 pt-3 border-t"><button onClick={() => closeModal('settings')} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={saveSettings} disabled={isSaving} className="px-4 py-2 bg-blue-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Saving...' : 'Save'}</button></div>
       </Modal>
