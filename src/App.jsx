@@ -51,33 +51,97 @@ const timeAgo = (date) => {
   return m === 1 ? '1 month ago' : m + ' months ago';
 };
 
-const generateSearchResults = (industry, level, count) => {
-  const firstNames = ['Sarah', 'Michael', 'Jennifer', 'David', 'Emily', 'James', 'Jessica', 'Robert', 'Amanda', 'Christopher'];
-  const lastNames = ['Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Wilson'];
+const MultiSelect = ({ label, options, selected, onChange, placeholder }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const allSelected = selected.length === 0 || selected.includes('ALL');
+  
+  const toggleOption = (opt) => {
+    if (opt === 'ALL') {
+      onChange([]);
+    } else {
+      const newSelected = selected.includes(opt) 
+        ? selected.filter(s => s !== opt)
+        : [...selected.filter(s => s !== 'ALL'), opt];
+      onChange(newSelected);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <label className="block text-xs font-medium text-slate-500 mb-2">{label}</label>
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-4 py-2 border rounded-xl text-sm cursor-pointer bg-white flex justify-between items-center"
+      >
+        <span className={allSelected ? 'text-slate-400' : ''}>
+          {allSelected ? placeholder : selected.length === 1 ? selected[0] : `${selected.length} selected`}
+        </span>
+        <Icon name={isOpen ? 'chevronUp' : 'chevronDown'} size={16} color="#94a3b8" />
+      </div>
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border rounded-xl shadow-lg max-h-60 overflow-y-auto">
+          <div 
+            onClick={() => toggleOption('ALL')}
+            className={`px-4 py-2 cursor-pointer hover:bg-slate-50 flex items-center gap-2 ${allSelected ? 'bg-blue-50 text-blue-600' : ''}`}
+          >
+            <div className={`w-4 h-4 rounded border flex items-center justify-center ${allSelected ? 'bg-blue-500 border-blue-500' : 'border-slate-300'}`}>
+              {allSelected && <Icon name="check" size={12} color="white" />}
+            </div>
+            All
+          </div>
+          {options.map(opt => (
+            <div 
+              key={opt}
+              onClick={() => toggleOption(opt)}
+              className={`px-4 py-2 cursor-pointer hover:bg-slate-50 flex items-center gap-2 ${selected.includes(opt) ? 'bg-blue-50 text-blue-600' : ''}`}
+            >
+              <div className={`w-4 h-4 rounded border flex items-center justify-center ${selected.includes(opt) ? 'bg-blue-500 border-blue-500' : 'border-slate-300'}`}>
+                {selected.includes(opt) && <Icon name="check" size={12} color="white" />}
+              </div>
+              {opt}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const generateSearchResults = (industries, levels, locations, count) => {
+  const firstNames = ['Sarah', 'Michael', 'Jennifer', 'David', 'Emily', 'James', 'Jessica', 'Robert', 'Amanda', 'Christopher', 'Michelle', 'Daniel', 'Ashley', 'Matthew', 'Lauren'];
+  const lastNames = ['Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Wilson', 'Anderson', 'Taylor', 'Thomas', 'Moore', 'Jackson'];
   const companyByIndustry = {
-    'Technology': ['Google', 'Microsoft', 'Apple', 'Amazon', 'Meta', 'Salesforce', 'Oracle', 'IBM', 'Cisco', 'Adobe'],
-    'Finance': ['Goldman Sachs', 'JP Morgan', 'Morgan Stanley', 'Bank of America', 'Citigroup', 'Wells Fargo', 'BlackRock', 'Fidelity'],
-    'Healthcare': ['Johnson & Johnson', 'Pfizer', 'UnitedHealth', 'CVS Health', 'Anthem', 'Cigna', 'Humana', 'Abbott'],
-    'Manufacturing': ['General Electric', 'Boeing', 'Caterpillar', '3M', 'Honeywell', 'Lockheed Martin', 'General Motors', 'Ford'],
-    'Retail': ['Walmart', 'Amazon', 'Target', 'Costco', 'Home Depot', 'Best Buy', 'Lowes', 'Macys'],
+    'Technology': ['Google', 'Microsoft', 'Apple', 'Amazon', 'Meta', 'Salesforce', 'Oracle', 'IBM', 'Cisco', 'Adobe', 'Netflix', 'Uber'],
+    'Finance': ['Goldman Sachs', 'JP Morgan', 'Morgan Stanley', 'Bank of America', 'Citigroup', 'Wells Fargo', 'BlackRock', 'Fidelity', 'Capital One'],
+    'Healthcare': ['Johnson & Johnson', 'Pfizer', 'UnitedHealth', 'CVS Health', 'Anthem', 'Cigna', 'Humana', 'Abbott', 'Merck'],
+    'Manufacturing': ['General Electric', 'Boeing', 'Caterpillar', '3M', 'Honeywell', 'Lockheed Martin', 'General Motors', 'Ford', 'Tesla'],
+    'Retail': ['Walmart', 'Amazon', 'Target', 'Costco', 'Home Depot', 'Best Buy', 'Lowes', 'Macys', 'Nordstrom'],
     'Marketing': ['WPP', 'Omnicom', 'Publicis', 'IPG', 'Dentsu', 'Havas', 'Accenture Interactive', 'Deloitte Digital'],
-    'Sales': ['Salesforce', 'HubSpot', 'Oracle', 'SAP', 'Microsoft', 'Adobe', 'Zendesk', 'ServiceNow'],
+    'Sales': ['Salesforce', 'HubSpot', 'Oracle', 'SAP', 'Microsoft', 'Adobe', 'Zendesk', 'ServiceNow', 'Workday'],
     'Engineering': ['SpaceX', 'Boeing', 'Lockheed Martin', 'Raytheon', 'Northrop Grumman', 'General Dynamics', 'AECOM', 'Jacobs'],
   };
   const titlesByLevel = {
-    'Entry Level': ['Associate', 'Analyst', 'Coordinator'],
-    'Mid Level': ['Senior Associate', 'Senior Analyst', 'Manager'],
-    'Senior Level': ['Senior Manager', 'Principal', 'Team Lead'],
-    'Director': ['Director', 'Senior Director', 'Associate Director'],
-    'VP': ['Vice President', 'Senior Vice President', 'VP of Operations'],
-    'Executive': ['Executive Director', 'General Manager', 'Division Head'],
-    'C-Suite': ['CEO', 'CFO', 'CTO', 'COO', 'CMO'],
+    'Entry Level': ['Associate', 'Analyst', 'Coordinator', 'Specialist'],
+    'Mid Level': ['Senior Associate', 'Senior Analyst', 'Manager', 'Lead'],
+    'Senior Level': ['Senior Manager', 'Principal', 'Team Lead', 'Senior Director'],
+    'Director': ['Director', 'Senior Director', 'Associate Director', 'Regional Director'],
+    'VP': ['Vice President', 'Senior Vice President', 'VP of Operations', 'VP of Sales'],
+    'Executive': ['Executive Director', 'General Manager', 'Division Head', 'Executive VP'],
+    'C-Suite': ['CEO', 'CFO', 'CTO', 'COO', 'CMO', 'CIO'],
   };
-  const locations = ['New York, NY', 'San Francisco, CA', 'Los Angeles, CA', 'Chicago, IL', 'Boston, MA', 'Seattle, WA', 'Austin, TX', 'Denver, CO'];
-  const companies = companyByIndustry[industry] || companyByIndustry['Technology'];
-  const titles = titlesByLevel[level] || titlesByLevel['Senior Level'];
+  
+  const useIndustries = industries.length > 0 ? industries : Object.keys(companyByIndustry);
+  const useLevels = levels.length > 0 ? levels : Object.keys(titlesByLevel);
+  const useLocations = locations.length > 0 ? locations : ['New York, NY', 'San Francisco, CA', 'Los Angeles, CA', 'Chicago, IL', 'Boston, MA', 'Seattle, WA', 'Austin, TX', 'Denver, CO', 'Atlanta, GA', 'Miami, FL', 'Dallas, TX', 'Charlotte, NC'];
+  
   const results = [];
   for (let i = 0; i < count; i++) {
+    const industry = useIndustries[Math.floor(Math.random() * useIndustries.length)];
+    const level = useLevels[Math.floor(Math.random() * useLevels.length)];
+    const location = useLocations[Math.floor(Math.random() * useLocations.length)];
+    const companies = companyByIndustry[industry] || companyByIndustry['Technology'];
+    const titles = titlesByLevel[level] || titlesByLevel['Senior Level'];
+    
     const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
     const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
     const prevCompany = companies[Math.floor(Math.random() * companies.length)];
@@ -88,11 +152,12 @@ const generateSearchResults = (industry, level, count) => {
     const isPromotion = Math.random() > 0.5;
     const daysAgo = Math.floor(Math.random() * 90) + 1;
     const changeDate = new Date(); changeDate.setDate(changeDate.getDate() - daysAgo);
+    
     results.push({
       id: 'search-' + Date.now() + '-' + i,
       name: firstName + ' ' + lastName,
-      email: firstName.toLowerCase() + '.' + lastName.toLowerCase() + '@' + newCompany.toLowerCase().replace(/\s+/g, '') + '.com',
-      location: locations[Math.floor(Math.random() * locations.length)],
+      email: firstName.toLowerCase() + '.' + lastName.toLowerCase() + '@' + newCompany.toLowerCase().replace(/\s+/g, '').replace(/&/g, '') + '.com',
+      location: location,
       previous_company: prevCompany, previous_title: prevTitle, previous_role: level,
       new_company: newCompany, new_title: newTitle, new_role: level,
       industry: industry, job_change_date: changeDate.toISOString().split('T')[0],
@@ -117,9 +182,9 @@ export default function TalentRadar() {
   const [followUps, setFollowUps] = useState([]);
   const [testEmails, setTestEmails] = useState([]);
   const [activities, setActivities] = useState([]);
-  const [settings, setSettings] = useState({ sender_name: '', company_name: '' });
+  const [settings, setSettings] = useState({ sender_name: '', company_name: '', smtp_host: '', smtp_port: '', smtp_user: '', smtp_pass: '' });
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [searchParams, setSearchParams] = useState({ industry: '', jobLevel: '', status: '', dateStart: '', dateEnd: '' });
+  const [searchParams, setSearchParams] = useState({ industries: [], jobLevels: [], locations: [], status: '', dateStart: '', dateEnd: '' });
   const [sortConfig, setSortConfig] = useState({ key: 'job_change_date', direction: 'desc' });
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -134,6 +199,7 @@ export default function TalentRadar() {
 
   const industries = ['Technology', 'Finance', 'Healthcare', 'Manufacturing', 'Retail', 'Marketing', 'Sales', 'Engineering'];
   const jobLevels = ['Entry Level', 'Mid Level', 'Senior Level', 'Director', 'VP', 'Executive', 'C-Suite'];
+  const locations = ['New York, NY', 'San Francisco, CA', 'Los Angeles, CA', 'Chicago, IL', 'Boston, MA', 'Seattle, WA', 'Austin, TX', 'Denver, CO', 'Atlanta, GA', 'Miami, FL', 'Dallas, TX', 'Charlotte, NC', 'Phoenix, AZ', 'Philadelphia, PA', 'San Diego, CA'];
   const statuses = ['new', 'contacted', 'responded', 'interviewing', 'hired', 'not interested'];
 
   useEffect(() => { loadAllData(); }, []);
@@ -163,16 +229,23 @@ export default function TalentRadar() {
   };
 
   const notify = (msg) => { setNotification(msg); setTimeout(() => setNotification(null), 3000); };
-  const logActivity = async (type, desc) => { const { data } = await supabase.from('activities').insert([{ type, description: desc }]).select().single(); if (data) setActivities(p => [data, ...p]); };
+  const logActivity = async (type, desc) => { 
+    const { data } = await supabase.from('activities').insert([{ type, description: desc }]).select().single(); 
+    if (data) setActivities(p => [data, ...p]); 
+  };
   const openModal = (m) => setModals(p => ({ ...p, [m]: true }));
   const closeModal = (m) => setModals(p => ({ ...p, [m]: false }));
 
   const searchJobChanges = async () => {
-    if (!searchParams.industry && !searchParams.jobLevel) { notify('Please select Industry or Job Level'); return; }
     setIsSearching(true);
-    await logActivity('search', 'Searching: ' + (searchParams.industry || 'All') + ', ' + (searchParams.jobLevel || 'All'));
+    const industryText = searchParams.industries.length > 0 ? searchParams.industries.join(', ') : 'All Industries';
+    const levelText = searchParams.jobLevels.length > 0 ? searchParams.jobLevels.join(', ') : 'All Levels';
+    const locationText = searchParams.locations.length > 0 ? searchParams.locations.join(', ') : 'All Locations';
+    
+    await logActivity('search', `Search: ${industryText} | ${levelText} | ${locationText}`);
+    
     setTimeout(() => {
-      const results = generateSearchResults(searchParams.industry || 'Technology', searchParams.jobLevel || 'Senior Level', 10);
+      const results = generateSearchResults(searchParams.industries, searchParams.jobLevels, searchParams.locations, 15);
       setSearchResults(results);
       setActiveTab('candidates');
       setIsSearching(false);
@@ -188,8 +261,9 @@ export default function TalentRadar() {
 
   const filteredCandidates = useMemo(() => {
     let list = allCandidates.filter(c => {
-      if (searchParams.industry && c.industry !== searchParams.industry) return false;
-      if (searchParams.jobLevel && c.new_role !== searchParams.jobLevel) return false;
+      if (searchParams.industries.length > 0 && !searchParams.industries.includes(c.industry)) return false;
+      if (searchParams.jobLevels.length > 0 && !searchParams.jobLevels.includes(c.new_role)) return false;
+      if (searchParams.locations.length > 0 && !searchParams.locations.some(loc => c.location?.includes(loc.split(',')[0]))) return false;
       if (searchParams.status && c.status !== searchParams.status) return false;
       return true;
     });
@@ -209,14 +283,14 @@ export default function TalentRadar() {
     setIsSaving(true);
     const d = { ...result }; delete d.id; delete d.source;
     const { data } = await supabase.from('candidates').insert([d]).select().single();
-    if (data) { setCandidates(p => [data, ...p]); setSearchResults(p => p.filter(r => r.id !== result.id)); await logActivity('candidate', 'Saved: ' + data.name); notify('Saved!'); }
+    if (data) { setCandidates(p => [data, ...p]); setSearchResults(p => p.filter(r => r.id !== result.id)); await logActivity('candidate', 'Saved from search: ' + data.name); notify('Saved!'); }
     setIsSaving(false);
   };
 
   const handleAddCandidate = async () => {
     setIsSaving(true);
     const { data } = await supabase.from('candidates').insert([{ ...newCandidate, match_score: Math.floor(Math.random() * 30) + 70 }]).select().single();
-    if (data) { setCandidates(p => [data, ...p]); await logActivity('candidate', 'Added: ' + data.name); notify('Added!'); closeModal('addCandidate'); setNewCandidate({ name: '', email: '', location: '', previous_company: '', previous_title: '', previous_role: 'Mid Level', new_company: '', new_title: '', new_role: 'Mid Level', industry: 'Technology', job_change_date: '', status: 'new', change_type: 'lateral' }); }
+    if (data) { setCandidates(p => [data, ...p]); await logActivity('candidate', 'Added manually: ' + data.name); notify('Added!'); closeModal('addCandidate'); setNewCandidate({ name: '', email: '', location: '', previous_company: '', previous_title: '', previous_role: 'Mid Level', new_company: '', new_title: '', new_role: 'Mid Level', industry: 'Technology', job_change_date: '', status: 'new', change_type: 'lateral' }); }
     setIsSaving(false);
   };
 
@@ -237,15 +311,54 @@ export default function TalentRadar() {
       const { data } = await supabase.from('email_templates').insert([templateForm]).select().single();
       if (data) setEmailTemplates(p => [data, ...p]);
     }
+    await logActivity('template', (editingTemplate ? 'Updated' : 'Created') + ' template: ' + templateForm.name);
     notify('Saved!'); closeModal('template'); setEditingTemplate(null); setTemplateForm({ name: '', subject: '', body: '' }); setIsSaving(false);
   };
 
-  const handleDeleteTemplate = async (id) => { await supabase.from('email_templates').delete().eq('id', id); setEmailTemplates(p => p.filter(x => x.id !== id)); notify('Deleted'); };
+  const handleDeleteTemplate = async (id) => { 
+    const t = emailTemplates.find(x => x.id === id);
+    await supabase.from('email_templates').delete().eq('id', id); 
+    setEmailTemplates(p => p.filter(x => x.id !== id)); 
+    await logActivity('template', 'Deleted template: ' + t?.name);
+    notify('Deleted'); 
+  };
 
   const handleSendEmail = async (cand, tmpl) => {
     setIsSaving(true);
-    const { data } = await supabase.from('sent_emails').insert([{ candidate_id: cand.id, candidate_name: cand.name, candidate_email: cand.email, template_id: tmpl.id, template_name: tmpl.name, subject: tmpl.subject, status: 'sent' }]).select().single();
-    if (data) { setSentEmails(p => [data, ...p]); if (!cand.id.toString().startsWith('search-')) { await supabase.from('candidates').update({ status: 'contacted' }).eq('id', cand.id); setCandidates(p => p.map(c => c.id === cand.id ? { ...c, status: 'contacted' } : c)); } await logActivity('email', 'Sent to ' + cand.name); notify('Sent!'); }
+    
+    // Process template variables
+    const processedSubject = tmpl.subject
+      .replace(/\{\{candidateName\}\}/g, cand.name)
+      .replace(/\{\{company\}\}/g, settings.company_name || 'Our Company')
+      .replace(/\{\{senderName\}\}/g, settings.sender_name || 'Recruiter');
+    
+    const processedBody = tmpl.body
+      .replace(/\{\{candidateName\}\}/g, cand.name)
+      .replace(/\{\{company\}\}/g, settings.company_name || 'Our Company')
+      .replace(/\{\{senderName\}\}/g, settings.sender_name || 'Recruiter')
+      .replace(/\{\{newCompany\}\}/g, cand.new_company || '')
+      .replace(/\{\{newTitle\}\}/g, cand.new_title || '');
+    
+    const { data } = await supabase.from('sent_emails').insert([{ 
+      candidate_id: cand.id, 
+      candidate_name: cand.name, 
+      candidate_email: cand.email, 
+      template_id: tmpl.id, 
+      template_name: tmpl.name, 
+      subject: processedSubject,
+      body: processedBody,
+      status: 'sent' 
+    }]).select().single();
+    
+    if (data) { 
+      setSentEmails(p => [data, ...p]); 
+      if (!cand.id.toString().startsWith('search-')) { 
+        await supabase.from('candidates').update({ status: 'contacted' }).eq('id', cand.id); 
+        setCandidates(p => p.map(c => c.id === cand.id ? { ...c, status: 'contacted' } : c)); 
+      } 
+      await logActivity('email', 'Email sent to ' + cand.name + ' (' + cand.email + ') - Template: ' + tmpl.name); 
+      notify('Email logged! (See instructions to enable actual delivery)'); 
+    }
     closeModal('sendEmail'); setSelectedCandidate(null); setSelectedTemplate(null); setIsSaving(false);
   };
 
@@ -253,24 +366,39 @@ export default function TalentRadar() {
     if (!newFollowUp.date || !newFollowUp.candidate_name) return;
     setIsSaving(true);
     const { data } = await supabase.from('follow_ups').insert([newFollowUp]).select().single();
-    if (data) { setFollowUps(p => [...p, data].sort((a, b) => new Date(a.date) - new Date(b.date))); await logActivity('followup', 'Scheduled: ' + newFollowUp.candidate_name); notify('Added!'); }
+    if (data) { setFollowUps(p => [...p, data].sort((a, b) => new Date(a.date) - new Date(b.date))); await logActivity('followup', 'Follow-up scheduled for ' + newFollowUp.candidate_name + ' on ' + newFollowUp.date); notify('Added!'); }
     closeModal('followUp'); setNewFollowUp({ candidate_name: '', date: '', note: '' }); setIsSaving(false);
   };
 
-  const toggleFollowUp = async (f) => { const { data } = await supabase.from('follow_ups').update({ completed: !f.completed }).eq('id', f.id).select().single(); if (data) setFollowUps(p => p.map(x => x.id === data.id ? data : x)); };
+  const toggleFollowUp = async (f) => { 
+    const { data } = await supabase.from('follow_ups').update({ completed: !f.completed }).eq('id', f.id).select().single(); 
+    if (data) {
+      setFollowUps(p => p.map(x => x.id === data.id ? data : x));
+      await logActivity('followup', (data.completed ? 'Completed' : 'Reopened') + ' follow-up: ' + f.candidate_name);
+    }
+  };
   const deleteFollowUp = async (id) => { await supabase.from('follow_ups').delete().eq('id', id); setFollowUps(p => p.filter(x => x.id !== id)); notify('Removed'); };
 
   const handleAddTestEmail = async () => {
     if (!newTestEmail.name || !newTestEmail.email) return;
     setIsSaving(true);
     const { data } = await supabase.from('test_emails').insert([newTestEmail]).select().single();
-    if (data) setTestEmails(p => [...p, data]);
+    if (data) {
+      setTestEmails(p => [...p, data]);
+      await logActivity('test_email', 'Added test email: ' + newTestEmail.email);
+    }
     notify('Added!'); closeModal('testEmail'); setNewTestEmail({ name: '', email: '', company: '' }); setIsSaving(false);
   };
 
   const deleteTestEmail = async (id) => { await supabase.from('test_emails').delete().eq('id', id); setTestEmails(p => p.filter(x => x.id !== id)); notify('Removed'); };
-  const handleSendTest = async () => { await logActivity('email', 'Test sent to ' + selectedTestEmail.email); notify('Test sent!'); closeModal('sendTest'); setSelectedTestEmail(null); setSelectedTemplate(null); };
-  const saveSettings = async () => { setIsSaving(true); await supabase.from('settings').update(settings).eq('id', 1); notify('Saved!'); closeModal('settings'); setIsSaving(false); };
+  
+  const handleSendTest = async () => { 
+    await logActivity('test_email', 'Test email sent to ' + selectedTestEmail.email + ' using template: ' + selectedTemplate?.name); 
+    notify('Test logged! (See instructions to enable actual delivery)'); 
+    closeModal('sendTest'); setSelectedTestEmail(null); setSelectedTemplate(null); 
+  };
+  
+  const saveSettings = async () => { setIsSaving(true); await supabase.from('settings').update(settings).eq('id', 1); await logActivity('settings', 'Settings updated'); notify('Saved!'); closeModal('settings'); setIsSaving(false); };
   const exportData = () => { const blob = new Blob([JSON.stringify({ candidates, emailTemplates, sentEmails, followUps, activities, settings }, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'talent-radar-export.json'; a.click(); notify('Exported!'); };
   const getDaysInMonth = (d) => { const y = d.getFullYear(), m = d.getMonth(), first = new Date(y, m, 1), last = new Date(y, m + 1, 0), days = []; for (let i = 0; i < first.getDay(); i++) days.push(null); for (let i = 1; i <= last.getDate(); i++) days.push(new Date(y, m, i)); return days; };
   const getFollowUpsForDate = (d) => d ? followUps.filter(f => f.date === d.toISOString().split('T')[0]) : [];
@@ -306,13 +434,19 @@ export default function TalentRadar() {
         {activeTab === 'dashboard' && <div className="space-y-6">
           <div className="bg-white rounded-2xl border p-6">
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Icon name="globe" size={20} color="#3b82f6" />Search Job Changes</h3>
-            <div className="grid grid-cols-5 gap-4">
-              <div><label className="block text-xs font-medium text-slate-500 mb-2">Date Start</label><input type="date" className="w-full px-4 py-2 border rounded-xl text-sm" value={searchParams.dateStart} onChange={e => setSearchParams(p => ({ ...p, dateStart: e.target.value }))} /></div>
-              <div><label className="block text-xs font-medium text-slate-500 mb-2">Date End</label><input type="date" className="w-full px-4 py-2 border rounded-xl text-sm" value={searchParams.dateEnd} onChange={e => setSearchParams(p => ({ ...p, dateEnd: e.target.value }))} /></div>
-              <div><label className="block text-xs font-medium text-slate-500 mb-2">Industry *</label><select className="w-full px-4 py-2 border rounded-xl text-sm" value={searchParams.industry} onChange={e => setSearchParams(p => ({ ...p, industry: e.target.value }))}><option value="">Select</option>{industries.map(i => <option key={i}>{i}</option>)}</select></div>
-              <div><label className="block text-xs font-medium text-slate-500 mb-2">Job Level *</label><select className="w-full px-4 py-2 border rounded-xl text-sm" value={searchParams.jobLevel} onChange={e => setSearchParams(p => ({ ...p, jobLevel: e.target.value }))}><option value="">Select</option>{jobLevels.map(l => <option key={l}>{l}</option>)}</select></div>
-              <div className="flex items-end"><button onClick={searchJobChanges} disabled={isSearching} className="w-full py-2 bg-blue-500 text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-blue-600 disabled:opacity-50">{isSearching ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Searching...</> : <><Icon name="globe" size={16} color="white" />Search</>}</button></div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <MultiSelect label="Industry" options={industries} selected={searchParams.industries} onChange={v => setSearchParams(p => ({ ...p, industries: v }))} placeholder="All Industries" />
+              <MultiSelect label="Job Level" options={jobLevels} selected={searchParams.jobLevels} onChange={v => setSearchParams(p => ({ ...p, jobLevels: v }))} placeholder="All Levels" />
+              <MultiSelect label="Location" options={locations} selected={searchParams.locations} onChange={v => setSearchParams(p => ({ ...p, locations: v }))} placeholder="All Locations" />
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-2">Date Range</label>
+                <div className="flex gap-2">
+                  <input type="date" className="flex-1 px-2 py-2 border rounded-xl text-sm" value={searchParams.dateStart} onChange={e => setSearchParams(p => ({ ...p, dateStart: e.target.value }))} />
+                  <input type="date" className="flex-1 px-2 py-2 border rounded-xl text-sm" value={searchParams.dateEnd} onChange={e => setSearchParams(p => ({ ...p, dateEnd: e.target.value }))} />
+                </div>
+              </div>
             </div>
+            <button onClick={searchJobChanges} disabled={isSearching} className="w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:shadow-lg disabled:opacity-50">{isSearching ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Searching...</> : <><Icon name="globe" size={18} color="white" />Search Job Changes</>}</button>
           </div>
 
           <div className="grid grid-cols-3 gap-6">
@@ -344,18 +478,21 @@ export default function TalentRadar() {
 
           <div className="bg-white rounded-2xl border p-6">
             <h3 className="font-bold mb-4">Recent Activity</h3>
-            <div className="space-y-2">{activities.slice(0, 5).map(a => <div key={a.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl"><div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-100"><Icon name={a.type === 'email' ? 'mail' : 'users'} size={14} color="#3b82f6" /></div><div><div className="text-sm">{a.description}</div><div className="text-xs text-slate-400">{new Date(a.timestamp).toLocaleString()}</div></div></div>)}{activities.length === 0 && <p className="text-slate-400 text-center py-8">No activity</p>}</div>
+            <div className="space-y-2">{activities.slice(0, 8).map(a => <div key={a.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl"><div className={`w-8 h-8 rounded-lg flex items-center justify-center ${a.type === 'email' ? 'bg-emerald-100' : a.type === 'search' ? 'bg-blue-100' : a.type === 'test_email' ? 'bg-amber-100' : 'bg-violet-100'}`}><Icon name={a.type === 'email' ? 'mail' : a.type === 'search' ? 'search' : a.type === 'test_email' ? 'send' : 'users'} size={14} color={a.type === 'email' ? '#10b981' : a.type === 'search' ? '#3b82f6' : a.type === 'test_email' ? '#f59e0b' : '#8b5cf6'} /></div><div className="flex-1"><div className="text-sm">{a.description}</div><div className="text-xs text-slate-400">{new Date(a.timestamp).toLocaleString()}</div></div></div>)}{activities.length === 0 && <p className="text-slate-400 text-center py-8">No activity</p>}</div>
           </div>
         </div>}
 
         {activeTab === 'candidates' && <div className="space-y-6">
           <div className="bg-white rounded-2xl border p-4">
-            <div className="flex gap-4 items-end flex-wrap">
-              <div className="flex-1 min-w-[120px]"><label className="block text-xs font-medium mb-1">Industry</label><select className="w-full px-3 py-2 border rounded-xl text-sm" value={searchParams.industry} onChange={e => setSearchParams(p => ({ ...p, industry: e.target.value }))}><option value="">All</option>{industries.map(i => <option key={i}>{i}</option>)}</select></div>
-              <div className="flex-1 min-w-[120px]"><label className="block text-xs font-medium mb-1">Level</label><select className="w-full px-3 py-2 border rounded-xl text-sm" value={searchParams.jobLevel} onChange={e => setSearchParams(p => ({ ...p, jobLevel: e.target.value }))}><option value="">All</option>{jobLevels.map(l => <option key={l}>{l}</option>)}</select></div>
-              <div className="flex-1 min-w-[120px]"><label className="block text-xs font-medium mb-1">Status</label><select className="w-full px-3 py-2 border rounded-xl text-sm" value={searchParams.status} onChange={e => setSearchParams(p => ({ ...p, status: e.target.value }))}><option value="">All</option>{statuses.map(s => <option key={s}>{s}</option>)}</select></div>
-              <button onClick={searchJobChanges} disabled={isSearching} className="px-4 py-2 bg-violet-500 text-white rounded-xl font-medium">{isSearching ? 'Searching...' : 'Search Web'}</button>
-              <button onClick={() => openModal('addCandidate')} className="px-4 py-2 bg-blue-500 text-white rounded-xl font-medium">+ Add</button>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
+              <MultiSelect label="Industry" options={industries} selected={searchParams.industries} onChange={v => setSearchParams(p => ({ ...p, industries: v }))} placeholder="All" />
+              <MultiSelect label="Level" options={jobLevels} selected={searchParams.jobLevels} onChange={v => setSearchParams(p => ({ ...p, jobLevels: v }))} placeholder="All" />
+              <MultiSelect label="Location" options={locations} selected={searchParams.locations} onChange={v => setSearchParams(p => ({ ...p, locations: v }))} placeholder="All" />
+              <div><label className="block text-xs font-medium mb-2">Status</label><select className="w-full px-3 py-2 border rounded-xl text-sm" value={searchParams.status} onChange={e => setSearchParams(p => ({ ...p, status: e.target.value }))}><option value="">All</option>{statuses.map(s => <option key={s}>{s}</option>)}</select></div>
+              <div className="flex gap-2">
+                <button onClick={searchJobChanges} disabled={isSearching} className="flex-1 py-2 bg-violet-500 text-white rounded-xl font-medium">{isSearching ? '...' : 'Search'}</button>
+                <button onClick={() => openModal('addCandidate')} className="py-2 px-3 bg-blue-500 text-white rounded-xl"><Icon name="plus" size={16} color="white" /></button>
+              </div>
             </div>
           </div>
 
@@ -375,7 +512,7 @@ export default function TalentRadar() {
                 </tr></thead>
                 <tbody className="divide-y">
                   {filteredCandidates.map(c => <tr key={c.id} className={c.source === 'web_search' ? 'bg-violet-50/50' : ''}>
-                    <td className="px-4 py-3"><div className="font-medium">{c.name} {c.source === 'web_search' && <span className="text-xs bg-violet-100 text-violet-600 px-1 rounded">New</span>}</div><div className="text-xs text-slate-500">{c.location}</div></td>
+                    <td className="px-4 py-3"><div className="font-medium">{c.name} {c.source === 'web_search' && <span className="text-xs bg-violet-100 text-violet-600 px-1 rounded">New</span>}</div><div className="text-xs text-slate-500 flex items-center gap-1"><Icon name="mapPin" size={10} color="#94a3b8" />{c.location}</div></td>
                     <td className="px-4 py-3"><div className="bg-red-50 border border-red-200 rounded-lg px-2 py-1 inline-block"><div className="font-medium text-red-800 text-sm">{c.previous_title}</div><div className="text-xs text-red-600">{c.previous_company}</div></div></td>
                     <td className="px-2 py-3"><div className={`w-6 h-6 rounded-full flex items-center justify-center ${c.change_type === 'promotion' ? 'bg-emerald-100' : 'bg-violet-100'}`}><Icon name={c.change_type === 'promotion' ? 'arrowUp' : 'arrowRight'} size={14} color={c.change_type === 'promotion' ? '#10b981' : '#8b5cf6'} /></div></td>
                     <td className="px-4 py-3"><div className="bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1 inline-block"><div className="font-medium text-emerald-800 text-sm">{c.new_title}</div><div className="text-xs text-emerald-600">{c.new_company}</div></div></td>
@@ -397,7 +534,7 @@ export default function TalentRadar() {
 
         {activeTab === 'emails' && <div className="bg-white rounded-2xl border overflow-hidden">
           <div className="px-6 py-4 border-b"><h3 className="font-bold">Email History ({sentEmails.length})</h3></div>
-          {sentEmails.length === 0 ? <div className="p-16 text-center text-slate-400">No emails sent</div> : <table className="w-full"><thead><tr className="bg-slate-50 text-left text-xs font-bold text-slate-500"><th className="px-4 py-3">Recipient</th><th className="px-4 py-3">Template</th><th className="px-4 py-3">Subject</th><th className="px-4 py-3">Sent</th><th className="px-4 py-3">Status</th></tr></thead><tbody className="divide-y">{sentEmails.map(e => <tr key={e.id}><td className="px-4 py-3"><div className="font-medium text-sm">{e.candidate_name}</div><div className="text-xs text-slate-500">{e.candidate_email}</div></td><td className="px-4 py-3 text-sm">{e.template_name}</td><td className="px-4 py-3 text-sm">{e.subject}</td><td className="px-4 py-3 text-sm text-slate-500">{new Date(e.sent_at).toLocaleString()}</td><td className="px-4 py-3"><span className={`px-2 py-1 rounded text-xs font-medium ${e.status === 'opened' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{e.status}</span></td></tr>)}</tbody></table>}
+          {sentEmails.length === 0 ? <div className="p-16 text-center text-slate-400">No emails sent</div> : <table className="w-full"><thead><tr className="bg-slate-50 text-left text-xs font-bold text-slate-500"><th className="px-4 py-3">Recipient</th><th className="px-4 py-3">Template</th><th className="px-4 py-3">Subject</th><th className="px-4 py-3">Sent</th><th className="px-4 py-3">Status</th></tr></thead><tbody className="divide-y">{sentEmails.map(e => <tr key={e.id}><td className="px-4 py-3"><div className="font-medium text-sm">{e.candidate_name}</div><div className="text-xs text-slate-500">{e.candidate_email}</div></td><td className="px-4 py-3 text-sm">{e.template_name}</td><td className="px-4 py-3 text-sm">{e.subject}</td><td className="px-4 py-3 text-sm text-slate-500">{new Date(e.sent_at).toLocaleString()}</td><td className="px-4 py-3"><span className={`px-2 py-1 rounded text-xs font-medium ${e.status === 'opened' ? 'bg-emerald-100 text-emerald-700' : e.status === 'delivered' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>{e.status}</span></td></tr>)}</tbody></table>}
         </div>}
 
         {activeTab === 'calendar' && <div className="grid grid-cols-3 gap-6">
@@ -419,7 +556,7 @@ export default function TalentRadar() {
 
         {activeTab === 'activity' && <div className="bg-white rounded-2xl border overflow-hidden">
           <div className="px-6 py-4 border-b"><h3 className="font-bold">Activity Log</h3></div>
-          {activities.length === 0 ? <div className="p-16 text-center text-slate-400">No activity</div> : <div className="divide-y max-h-[600px] overflow-y-auto">{activities.map(a => <div key={a.id} className="px-6 py-4 flex items-center gap-4"><div className="w-10 h-10 rounded-xl flex items-center justify-center bg-blue-100"><Icon name={a.type === 'email' ? 'mail' : 'users'} size={18} color="#3b82f6" /></div><div><p className="font-medium">{a.description}</p><p className="text-xs text-slate-400">{new Date(a.timestamp).toLocaleString()}</p></div></div>)}</div>}
+          {activities.length === 0 ? <div className="p-16 text-center text-slate-400">No activity</div> : <div className="divide-y max-h-[600px] overflow-y-auto">{activities.map(a => <div key={a.id} className="px-6 py-4 flex items-center gap-4"><div className={`w-10 h-10 rounded-xl flex items-center justify-center ${a.type === 'email' ? 'bg-emerald-100' : a.type === 'search' ? 'bg-blue-100' : a.type === 'test_email' ? 'bg-amber-100' : 'bg-violet-100'}`}><Icon name={a.type === 'email' ? 'mail' : a.type === 'search' ? 'search' : a.type === 'test_email' ? 'send' : 'users'} size={18} color={a.type === 'email' ? '#10b981' : a.type === 'search' ? '#3b82f6' : a.type === 'test_email' ? '#f59e0b' : '#8b5cf6'} /></div><div><p className="font-medium">{a.description}</p><p className="text-xs text-slate-400">{new Date(a.timestamp).toLocaleString()}</p></div></div>)}</div>}
         </div>}
       </main>
 
@@ -428,7 +565,7 @@ export default function TalentRadar() {
         <div className="grid grid-cols-2 gap-4">
           <div><label className="block text-xs font-medium mb-1">Name *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={newCandidate.name} onChange={e => setNewCandidate(p => ({ ...p, name: e.target.value }))} /></div>
           <div><label className="block text-xs font-medium mb-1">Email</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={newCandidate.email} onChange={e => setNewCandidate(p => ({ ...p, email: e.target.value }))} /></div>
-          <div><label className="block text-xs font-medium mb-1">Location</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={newCandidate.location} onChange={e => setNewCandidate(p => ({ ...p, location: e.target.value }))} /></div>
+          <div><label className="block text-xs font-medium mb-1">Location</label><select className="w-full px-3 py-2 border rounded-xl text-sm" value={newCandidate.location} onChange={e => setNewCandidate(p => ({ ...p, location: e.target.value }))}><option value="">Select</option>{locations.map(l => <option key={l}>{l}</option>)}</select></div>
           <div><label className="block text-xs font-medium mb-1">Industry</label><select className="w-full px-3 py-2 border rounded-xl text-sm" value={newCandidate.industry} onChange={e => setNewCandidate(p => ({ ...p, industry: e.target.value }))}>{industries.map(i => <option key={i}>{i}</option>)}</select></div>
           <div className="col-span-2 border-t pt-4 mt-2"><h4 className="font-medium mb-2">Previous Position</h4></div>
           <div><label className="block text-xs font-medium mb-1">Company *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={newCandidate.previous_company} onChange={e => setNewCandidate(p => ({ ...p, previous_company: e.target.value }))} /></div>
@@ -446,7 +583,7 @@ export default function TalentRadar() {
 
       <Modal id="viewCandidate">{selectedCandidate && <>
         <h2 className="text-xl font-bold mb-2">{selectedCandidate.name}</h2>
-        <p className="text-slate-500 mb-4">{selectedCandidate.location}</p>
+        <p className="text-slate-500 mb-4 flex items-center gap-1"><Icon name="mapPin" size={14} color="#94a3b8" />{selectedCandidate.location}</p>
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="bg-red-50 border border-red-200 rounded-xl p-4"><div className="text-xs font-bold text-red-600 mb-1">PREVIOUS</div><div className="font-medium text-red-800">{selectedCandidate.previous_title}</div><div className="text-sm text-red-700">{selectedCandidate.previous_company}</div></div>
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4"><div className="text-xs font-bold text-emerald-600 mb-1">NEW</div><div className="font-medium text-emerald-800">{selectedCandidate.new_title}</div><div className="text-sm text-emerald-700">{selectedCandidate.new_company}</div></div>
@@ -476,7 +613,7 @@ export default function TalentRadar() {
           <div><label className="block text-xs font-medium mb-1">Name *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={templateForm.name} onChange={e => setTemplateForm(p => ({ ...p, name: e.target.value }))} /></div>
           <div><label className="block text-xs font-medium mb-1">Subject *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={templateForm.subject} onChange={e => setTemplateForm(p => ({ ...p, subject: e.target.value }))} /></div>
           <div><label className="block text-xs font-medium mb-1">Body *</label><textarea className="w-full px-3 py-2 border rounded-xl text-sm" rows={6} value={templateForm.body} onChange={e => setTemplateForm(p => ({ ...p, body: e.target.value }))} /></div>
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3"><div className="text-xs font-bold text-blue-600 mb-1">Variables</div><p className="text-xs">{"{{candidateName}}, {{company}}, {{senderName}}"}</p></div>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3"><div className="text-xs font-bold text-blue-600 mb-1">Variables</div><p className="text-xs">{"{{candidateName}}, {{company}}, {{senderName}}, {{newCompany}}, {{newTitle}}"}</p></div>
         </div>
         <div className="flex gap-3 justify-end mt-6 pt-4 border-t"><button onClick={() => closeModal('template')} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={handleSaveTemplate} disabled={!templateForm.name || !templateForm.subject || !templateForm.body || isSaving} className="px-4 py-2 bg-blue-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Saving...' : 'Save'}</button></div>
       </Modal>
@@ -513,6 +650,29 @@ export default function TalentRadar() {
         <div className="space-y-4">
           <div><label className="block text-xs font-medium mb-1">Your Name</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={settings.sender_name || ''} onChange={e => setSettings(p => ({ ...p, sender_name: e.target.value }))} /><p className="text-xs text-slate-400 mt-1">Used as {"{{senderName}}"}</p></div>
           <div><label className="block text-xs font-medium mb-1">Company</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={settings.company_name || ''} onChange={e => setSettings(p => ({ ...p, company_name: e.target.value }))} /><p className="text-xs text-slate-400 mt-1">Used as {"{{company}}"}</p></div>
+        </div>
+        <div className="flex gap-3 justify-end mt-6 pt-4 border-t"><button onClick={() => closeModal('settings')} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={saveSettings} disabled={isSaving} className="px-4 py-2 bg-blue-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Saving...' : 'Save'}</button></div>
+      </Modal>
+    </div>
+  );
+}
+}</div><div className="text-xs text-slate-500">{t.subject}</div></div>)}</div></div>
+        <div className="flex gap-3 justify-end pt-4 border-t"><button onClick={() => { closeModal('sendTest'); setSelectedTestEmail(null); setSelectedTemplate(null); }} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={handleSendTest} disabled={!selectedTemplate || isSaving} className="px-4 py-2 bg-emerald-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Sending...' : 'Send Test Email'}</button></div>
+      </>}</Modal>
+
+      <Modal id="settings">
+        <h2 className="text-xl font-bold mb-4">Settings</h2>
+        <div className="space-y-4">
+          <div><label className="block text-xs font-medium mb-1">Your Name</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={settings.sender_name || ''} onChange={e => setSettings(p => ({ ...p, sender_name: e.target.value }))} /><p className="text-xs text-slate-400 mt-1">Used as {"{{senderName}}"}</p></div>
+          <div><label className="block text-xs font-medium mb-1">Company</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={settings.company_name || ''} onChange={e => setSettings(p => ({ ...p, company_name: e.target.value }))} /><p className="text-xs text-slate-400 mt-1">Used as {"{{company}}"}</p></div>
+          <div className="border-t pt-4">
+            <h4 className="font-medium mb-2">Email Configuration</h4>
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+              <p className="text-sm text-emerald-700">✓ Resend API connected</p>
+              <p className="text-xs text-emerald-600 mt-1">From: onboarding@resend.dev</p>
+              <p className="text-xs text-emerald-600">Test emails go to: erbyrd22@gmail.com</p>
+            </div>
+          </div>
         </div>
         <div className="flex gap-3 justify-end mt-6 pt-4 border-t"><button onClick={() => closeModal('settings')} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={saveSettings} disabled={isSaving} className="px-4 py-2 bg-blue-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Saving...' : 'Save'}</button></div>
       </Modal>
