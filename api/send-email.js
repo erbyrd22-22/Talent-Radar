@@ -23,6 +23,7 @@ export default async function handler(req, res) {
   // Your Resend API key
   const RESEND_API_KEY = 're_d6hCPoBY_6MAenZgjWz5R8dZ5WCmyySqD';
   const FROM_EMAIL = 'onboarding@resend.dev';
+  const REPLY_TO_EMAIL = 'erbyrd22@gmail.com';
   const TEST_EMAIL = 'erbyrd22@gmail.com';
 
   // If test mode, send to your email instead
@@ -38,6 +39,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         from: FROM_EMAIL,
         to: [recipient],
+        reply_to: REPLY_TO_EMAIL,
         subject: subject,
         html: body.replace(/\n/g, '<br/>'),
       }),
