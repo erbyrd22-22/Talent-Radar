@@ -9,19 +9,9 @@ const RESEND_API_KEY = 're_d6hCPoBY_6MAenZgjWz5R8dZ5WCmyySqD';
 const FROM_EMAIL = 'onboarding@resend.dev';
 const TEST_EMAIL = 'erbyrd22@gmail.com';
 
-const sendEmailViaResend = async (to, subject, body, isTest = false) => {
-  try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + RESEND_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM_EMAIL, to: [isTest ? TEST_EMAIL : to], subject, html: body.replace(/\n/g, '<br/>') }),
-    });
-    const data = await response.json();
-    return response.ok ? { success: true, id: data.id } : { success: false, error: data.message || 'Failed' };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-};
+// Note: Direct Resend API calls from browser are blocked by CORS
+// For now, we'll log emails to database and open mailto: link as fallback
+// To enable real sending, you need a Supabase Edge Function or Vercel API route
 
 const Icon = ({ name, size = 20, color = "currentColor" }) => {
   const icons = {
@@ -50,6 +40,7 @@ const Icon = ({ name, size = 20, color = "currentColor" }) => {
     globe: <><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></>,
     mapPin: <><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></>,
     search: <><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>,
+    externalLink: <><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icons[name]}</svg>;
 };
@@ -72,7 +63,7 @@ const MultiSelect = ({ label, options, selected, onChange, placeholder }) => {
   };
   return (
     <div className="relative">
-      <label className="block text-xs font-medium text-slate-500 mb-2">{label}</label>
+      <label className="block text-xs font-medium text-slate-500 mb-1">{label}</label>
       <div onClick={() => setIsOpen(!isOpen)} className="w-full px-3 py-2 border rounded-xl text-sm cursor-pointer bg-white flex justify-between items-center">
         <span className={allSelected ? 'text-slate-400' : ''}>{allSelected ? placeholder : selected.length === 1 ? selected[0] : selected.length + ' selected'}</span>
         <Icon name={isOpen ? 'chevronUp' : 'chevronDown'} size={14} color="#94a3b8" />
@@ -85,13 +76,18 @@ const MultiSelect = ({ label, options, selected, onChange, placeholder }) => {
   );
 };
 
-const generateSearchResults = (industries, levels, locations, count) => {
-  const names = [['Sarah','Michael','Jennifer','David','Emily','James','Jessica','Robert','Amanda','Chris'],['Johnson','Williams','Brown','Jones','Garcia','Miller','Davis','Rodriguez','Martinez','Wilson']];
-  const companies = { Technology: ['Google','Microsoft','Apple','Amazon','Meta','Salesforce','Oracle','Adobe'], Finance: ['Goldman Sachs','JP Morgan','Morgan Stanley','Bank of America','Citigroup','BlackRock'], Healthcare: ['Johnson & Johnson','Pfizer','UnitedHealth','CVS Health','Cigna','Abbott'], Manufacturing: ['GE','Boeing','Caterpillar','3M','Honeywell','Ford','Tesla'], Retail: ['Walmart','Amazon','Target','Costco','Home Depot','Best Buy'], Marketing: ['WPP','Omnicom','Publicis','IPG','Dentsu'], Sales: ['Salesforce','HubSpot','Oracle','SAP','Zendesk'], Engineering: ['SpaceX','Boeing','Lockheed Martin','Raytheon','AECOM'] };
+const generateSearchResults = (industries, levels, locations, dateStart, dateEnd, count) => {
+  const names = [['Sarah','Michael','Jennifer','David','Emily','James','Jessica','Robert','Amanda','Chris','Lauren','Daniel','Ashley','Matthew','Nicole'],['Johnson','Williams','Brown','Jones','Garcia','Miller','Davis','Rodriguez','Martinez','Wilson','Anderson','Taylor','Thomas','Moore','Jackson']];
+  const companies = { Technology: ['Google','Microsoft','Apple','Amazon','Meta','Salesforce','Oracle','Adobe','Netflix','Uber'], Finance: ['Goldman Sachs','JP Morgan','Morgan Stanley','Bank of America','Citigroup','BlackRock','Fidelity'], Healthcare: ['Johnson & Johnson','Pfizer','UnitedHealth','CVS Health','Cigna','Abbott','Merck'], Manufacturing: ['GE','Boeing','Caterpillar','3M','Honeywell','Ford','Tesla'], Retail: ['Walmart','Amazon','Target','Costco','Home Depot','Best Buy','Nordstrom'], Marketing: ['WPP','Omnicom','Publicis','IPG','Dentsu','Havas'], Sales: ['Salesforce','HubSpot','Oracle','SAP','Zendesk','Workday'], Engineering: ['SpaceX','Boeing','Lockheed Martin','Raytheon','AECOM','Jacobs'] };
   const titles = { 'Entry Level': ['Associate','Analyst','Coordinator'], 'Mid Level': ['Senior Analyst','Manager','Lead'], 'Senior Level': ['Senior Manager','Principal','Director'], Director: ['Director','Senior Director','Regional Director'], VP: ['Vice President','SVP','VP Operations'], Executive: ['Executive Director','GM','Division Head'], 'C-Suite': ['CEO','CFO','CTO','COO','CMO'] };
   const locs = locations.length ? locations : ['New York, NY','San Francisco, CA','Los Angeles, CA','Chicago, IL','Boston, MA','Seattle, WA','Austin, TX','Denver, CO','Atlanta, GA','Charlotte, NC','Dallas, TX','Miami, FL'];
   const inds = industries.length ? industries : Object.keys(companies);
   const lvls = levels.length ? levels : Object.keys(titles);
+  
+  const startDate = dateStart ? new Date(dateStart) : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  const endDate = dateEnd ? new Date(dateEnd) : new Date();
+  const dateRange = endDate - startDate;
+  
   const results = [];
   for (let i = 0; i < count; i++) {
     const ind = inds[Math.floor(Math.random() * inds.length)];
@@ -105,8 +101,7 @@ const generateSearchResults = (industries, levels, locations, count) => {
     let nc = cos[Math.floor(Math.random() * cos.length)]; while (nc === pc && cos.length > 1) nc = cos[Math.floor(Math.random() * cos.length)];
     const pt = tits[Math.floor(Math.random() * tits.length)];
     const nt = tits[Math.floor(Math.random() * tits.length)];
-    const days = Math.floor(Math.random() * 90) + 1;
-    const cd = new Date(); cd.setDate(cd.getDate() - days);
+    const cd = new Date(startDate.getTime() + Math.random() * dateRange);
     results.push({ id: 'sr-' + Date.now() + '-' + i, name: fn + ' ' + ln, email: fn.toLowerCase() + '.' + ln.toLowerCase() + '@' + nc.toLowerCase().replace(/[^a-z]/g, '') + '.com', location: loc, previous_company: pc, previous_title: pt, previous_role: lvl, new_company: nc, new_title: nt, new_role: lvl, industry: ind, job_change_date: cd.toISOString().split('T')[0], change_type: Math.random() > 0.5 ? 'promotion' : 'lateral', match_score: Math.floor(Math.random() * 25) + 75, status: 'new', source: 'web_search', linkedin_url: 'https://linkedin.com/in/' + fn.toLowerCase() + ln.toLowerCase() });
   }
   return results.sort((a, b) => new Date(b.job_change_date) - new Date(a.job_change_date));
@@ -127,7 +122,7 @@ export default function TalentRadar() {
   const [activities, setActivities] = useState([]);
   const [settings, setSettings] = useState({ sender_name: '', company_name: '' });
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [searchParams, setSearchParams] = useState({ industries: [], jobLevels: [], locations: [], status: '' });
+  const [searchParams, setSearchParams] = useState({ industries: [], jobLevels: [], locations: [], status: '', dateStart: '', dateEnd: '' });
   const [sortConfig, setSortConfig] = useState({ key: 'job_change_date', direction: 'desc' });
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -178,10 +173,15 @@ export default function TalentRadar() {
 
   const searchJobChanges = async () => {
     setIsSearching(true);
-    const txt = [searchParams.industries.length ? searchParams.industries.join(', ') : 'All Industries', searchParams.jobLevels.length ? searchParams.jobLevels.join(', ') : 'All Levels', searchParams.locations.length ? searchParams.locations.join(', ') : 'All Locations'].join(' | ');
+    const txt = [
+      searchParams.industries.length ? searchParams.industries.join(', ') : 'All Industries',
+      searchParams.jobLevels.length ? searchParams.jobLevels.join(', ') : 'All Levels',
+      searchParams.locations.length ? searchParams.locations.join(', ') : 'All Locations',
+      searchParams.dateStart || searchParams.dateEnd ? `${searchParams.dateStart || 'any'} to ${searchParams.dateEnd || 'now'}` : 'Last 90 days'
+    ].join(' | ');
     await logActivity('search', 'Search: ' + txt);
     setTimeout(() => {
-      const results = generateSearchResults(searchParams.industries, searchParams.jobLevels, searchParams.locations, 15);
+      const results = generateSearchResults(searchParams.industries, searchParams.jobLevels, searchParams.locations, searchParams.dateStart, searchParams.dateEnd, 15);
       setSearchResults(results);
       setActiveTab('candidates');
       setIsSearching(false);
@@ -259,14 +259,32 @@ export default function TalentRadar() {
     setIsSaving(true);
     const subject = processTemplate(tmpl.subject, cand);
     const body = processTemplate(tmpl.body, cand);
-    const result = await sendEmailViaResend(cand.email, subject, body, false);
-    const status = result.success ? 'delivered' : 'failed';
-    const { data } = await supabase.from('sent_emails').insert([{ candidate_id: cand.id, candidate_name: cand.name, candidate_email: cand.email, template_id: tmpl.id, template_name: tmpl.name, subject, body, status, resend_id: result.id }]).select().single();
+    
+    // Log to database
+    const { data } = await supabase.from('sent_emails').insert([{ 
+      candidate_id: cand.id, 
+      candidate_name: cand.name, 
+      candidate_email: cand.email, 
+      template_id: tmpl.id, 
+      template_name: tmpl.name, 
+      subject, 
+      body, 
+      status: 'pending'
+    }]).select().single();
+    
     if (data) {
       setSentEmails(p => [data, ...p]);
-      if (!cand.id.toString().startsWith('sr-')) { await supabase.from('candidates').update({ status: 'contacted' }).eq('id', cand.id); setCandidates(p => p.map(c => c.id === cand.id ? { ...c, status: 'contacted' } : c)); }
-      await logActivity('email', (result.success ? '✅ Delivered to ' : '❌ Failed to ') + cand.name + ' (' + cand.email + ')');
-      notify(result.success ? 'Email sent!' : 'Failed: ' + result.error, result.success ? 'success' : 'error');
+      if (!cand.id.toString().startsWith('sr-')) { 
+        await supabase.from('candidates').update({ status: 'contacted' }).eq('id', cand.id); 
+        setCandidates(p => p.map(c => c.id === cand.id ? { ...c, status: 'contacted' } : c)); 
+      }
+      await logActivity('email', 'Email logged for ' + cand.name + ' (' + cand.email + ')');
+      
+      // Open mailto link as fallback
+      const mailtoLink = `mailto:${cand.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.open(mailtoLink, '_blank');
+      
+      notify('Email opened in your mail app!');
     }
     closeModal('sendEmail'); setSelectedCandidate(null); setSelectedTemplate(null); setIsSaving(false);
   };
@@ -298,9 +316,14 @@ export default function TalentRadar() {
     const cand = { name: selectedTestEmail.name, new_company: selectedTestEmail.company || 'Test Co', new_title: 'Test Title' };
     const subject = '[TEST] ' + processTemplate(selectedTemplate.subject, cand);
     const body = processTemplate(selectedTemplate.body, cand);
-    const result = await sendEmailViaResend(selectedTestEmail.email, subject, body, true);
-    await logActivity('test', (result.success ? '✅ Test sent to ' : '❌ Test failed: ') + TEST_EMAIL);
-    notify(result.success ? 'Test sent to ' + TEST_EMAIL : 'Failed: ' + result.error, result.success ? 'success' : 'error');
+    
+    await logActivity('test', 'Test email prepared for ' + selectedTestEmail.email);
+    
+    // Open mailto link
+    const mailtoLink = `mailto:${selectedTestEmail.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(mailtoLink, '_blank');
+    
+    notify('Test email opened in your mail app!');
     setIsSaving(false); closeModal('sendTest'); setSelectedTestEmail(null); setSelectedTemplate(null);
   };
 
@@ -308,7 +331,7 @@ export default function TalentRadar() {
   const exportData = () => { const blob = new Blob([JSON.stringify({ candidates, emailTemplates, sentEmails, followUps, activities, settings }, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'talent-radar.json'; a.click(); notify('Exported!'); };
   const getDaysInMonth = (d) => { const y = d.getFullYear(), m = d.getMonth(), first = new Date(y, m, 1), last = new Date(y, m + 1, 0), days = []; for (let i = 0; i < first.getDay(); i++) days.push(null); for (let i = 1; i <= last.getDate(); i++) days.push(new Date(y, m, i)); return days; };
   const getFollowUpsForDate = (d) => d ? followUps.filter(f => f.date === d.toISOString().split('T')[0]) : [];
-  const stats = useMemo(() => ({ total: allCandidates.length, results: searchResults.length, delivered: sentEmails.filter(e => e.status === 'delivered').length, pending: followUps.filter(f => !f.completed).length }), [allCandidates, searchResults, sentEmails, followUps]);
+  const stats = useMemo(() => ({ total: allCandidates.length, results: searchResults.length, emails: sentEmails.length, pending: followUps.filter(f => !f.completed).length }), [allCandidates, searchResults, sentEmails, followUps]);
   const SortIcon = ({ col }) => sortConfig.key !== col ? <Icon name="chevronDown" size={12} color="#cbd5e1" /> : <Icon name={sortConfig.direction === 'asc' ? 'chevronUp' : 'chevronDown'} size={12} color="#3b82f6" />;
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-50 to-blue-100"><div className="w-12 h-12 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin" /></div>;
@@ -325,7 +348,7 @@ export default function TalentRadar() {
           <div><h1 className="text-xl font-bold text-blue-600">TalentRadar</h1><div className="text-xs" style={{ color: isConnected ? '#10b981' : '#ef4444' }}>{isConnected ? '● Connected' : '○ Offline'}</div></div>
         </div>
         <div className="flex gap-3 items-center">
-          {[{ l: 'Candidates', v: stats.total, c: '#3b82f6' }, { l: 'Results', v: stats.results, c: '#8b5cf6' }, { l: 'Delivered', v: stats.delivered, c: '#10b981' }].map((s, i) => <div key={i} className="text-center px-3 border-r last:border-0"><div className="text-lg font-bold" style={{ color: s.c }}>{s.v}</div><div className="text-xs text-slate-500">{s.l}</div></div>)}
+          {[{ l: 'Candidates', v: stats.total, c: '#3b82f6' }, { l: 'Results', v: stats.results, c: '#8b5cf6' }, { l: 'Emails', v: stats.emails, c: '#10b981' }].map((s, i) => <div key={i} className="text-center px-3 border-r last:border-0"><div className="text-lg font-bold" style={{ color: s.c }}>{s.v}</div><div className="text-xs text-slate-500">{s.l}</div></div>)}
           <button onClick={loadAllData} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200"><Icon name="refresh" size={16} color="#64748b" /></button>
           <button onClick={exportData} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200"><Icon name="download" size={16} color="#64748b" /></button>
           <button onClick={() => openModal('settings')} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200"><Icon name="settings" size={16} color="#64748b" /></button>
@@ -340,10 +363,12 @@ export default function TalentRadar() {
         {activeTab === 'dashboard' && <div className="space-y-6">
           <div className="bg-white rounded-2xl border p-6">
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Icon name="globe" size={20} color="#3b82f6" />Search Job Changes</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-              <MultiSelect label="Industry" options={industries} selected={searchParams.industries} onChange={v => setSearchParams(p => ({ ...p, industries: v }))} placeholder="All Industries" />
-              <MultiSelect label="Job Level" options={jobLevels} selected={searchParams.jobLevels} onChange={v => setSearchParams(p => ({ ...p, jobLevels: v }))} placeholder="All Levels" />
-              <MultiSelect label="Location" options={locationsList} selected={searchParams.locations} onChange={v => setSearchParams(p => ({ ...p, locations: v }))} placeholder="All Locations" />
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
+              <MultiSelect label="Industry" options={industries} selected={searchParams.industries} onChange={v => setSearchParams(p => ({ ...p, industries: v }))} placeholder="All" />
+              <MultiSelect label="Job Level" options={jobLevels} selected={searchParams.jobLevels} onChange={v => setSearchParams(p => ({ ...p, jobLevels: v }))} placeholder="All" />
+              <MultiSelect label="Location" options={locationsList} selected={searchParams.locations} onChange={v => setSearchParams(p => ({ ...p, locations: v }))} placeholder="All" />
+              <div><label className="block text-xs font-medium text-slate-500 mb-1">Date From</label><input type="date" className="w-full px-3 py-2 border rounded-xl text-sm" value={searchParams.dateStart} onChange={e => setSearchParams(p => ({ ...p, dateStart: e.target.value }))} /></div>
+              <div><label className="block text-xs font-medium text-slate-500 mb-1">Date To</label><input type="date" className="w-full px-3 py-2 border rounded-xl text-sm" value={searchParams.dateEnd} onChange={e => setSearchParams(p => ({ ...p, dateEnd: e.target.value }))} /></div>
               <div className="flex items-end"><button onClick={searchJobChanges} disabled={isSearching} className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50">{isSearching ? 'Searching...' : <><Icon name="search" size={16} color="white" />Search</>}</button></div>
             </div>
           </div>
@@ -368,9 +393,8 @@ export default function TalentRadar() {
 
             <div className="bg-white rounded-2xl border p-6">
               <div className="flex justify-between items-center mb-2"><h3 className="font-bold">Test Emails</h3></div>
-              <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2 mb-3">Tests send to: {TEST_EMAIL}</p>
-              <div className="space-y-2 max-h-36 overflow-y-auto">
-                {testEmails.map(t => <div key={t.id} className="p-2 bg-emerald-50 rounded-xl flex justify-between items-center"><div className="truncate"><div className="font-medium text-sm text-emerald-800 truncate">{t.name}</div></div><div className="flex gap-1"><button onClick={() => { setSelectedTestEmail(t); openModal('sendTest'); }} className="px-2 py-1 bg-emerald-500 text-white rounded text-xs">Test</button><button onClick={() => deleteTestEmail(t.id)} className="p-1"><Icon name="trash" size={12} color="#ef4444" /></button></div></div>)}
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {testEmails.map(t => <div key={t.id} className="p-2 bg-emerald-50 rounded-xl flex justify-between items-center"><div className="truncate"><div className="font-medium text-sm text-emerald-800 truncate">{t.name}</div><div className="text-xs text-emerald-600 truncate">{t.email}</div></div><div className="flex gap-1"><button onClick={() => { setSelectedTestEmail(t); openModal('sendTest'); }} className="px-2 py-1 bg-emerald-500 text-white rounded text-xs">Test</button><button onClick={() => deleteTestEmail(t.id)} className="p-1"><Icon name="trash" size={12} color="#ef4444" /></button></div></div>)}
                 {!testEmails.length && <p className="text-slate-400 text-sm text-center py-4">No test emails</p>}
               </div>
             </div>
@@ -384,11 +408,11 @@ export default function TalentRadar() {
 
         {activeTab === 'candidates' && <div className="space-y-4">
           <div className="bg-white rounded-2xl border p-4">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
               <MultiSelect label="Industry" options={industries} selected={searchParams.industries} onChange={v => setSearchParams(p => ({ ...p, industries: v }))} placeholder="All" />
               <MultiSelect label="Level" options={jobLevels} selected={searchParams.jobLevels} onChange={v => setSearchParams(p => ({ ...p, jobLevels: v }))} placeholder="All" />
               <MultiSelect label="Location" options={locationsList} selected={searchParams.locations} onChange={v => setSearchParams(p => ({ ...p, locations: v }))} placeholder="All" />
-              <div><label className="block text-xs font-medium text-slate-500 mb-2">Status</label><select className="w-full px-3 py-2 border rounded-xl text-sm" value={searchParams.status} onChange={e => setSearchParams(p => ({ ...p, status: e.target.value }))}><option value="">All</option>{statuses.map(s => <option key={s}>{s}</option>)}</select></div>
+              <div><label className="block text-xs font-medium text-slate-500 mb-1">Status</label><select className="w-full px-3 py-2 border rounded-xl text-sm" value={searchParams.status} onChange={e => setSearchParams(p => ({ ...p, status: e.target.value }))}><option value="">All</option>{statuses.map(s => <option key={s}>{s}</option>)}</select></div>
               <div className="flex gap-2"><button onClick={searchJobChanges} disabled={isSearching} className="flex-1 py-2 bg-violet-500 text-white rounded-xl font-medium">{isSearching ? '...' : 'Search'}</button><button onClick={() => openModal('addCandidate')} className="py-2 px-3 bg-blue-500 text-white rounded-xl"><Icon name="plus" size={16} color="white" /></button></div>
             </div>
           </div>
@@ -426,8 +450,8 @@ export default function TalentRadar() {
         </div>}
 
         {activeTab === 'emails' && <div className="bg-white rounded-2xl border overflow-hidden">
-          <div className="px-4 py-3 border-b flex justify-between items-center"><h3 className="font-bold">Emails ({sentEmails.length})</h3><div className="flex gap-2 text-xs"><span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded">✓ {sentEmails.filter(e => e.status === 'delivered').length}</span><span className="px-2 py-1 bg-red-100 text-red-700 rounded">✗ {sentEmails.filter(e => e.status === 'failed').length}</span></div></div>
-          {!sentEmails.length ? <div className="p-12 text-center text-slate-400">No emails sent yet</div> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-slate-50 text-left text-xs font-bold text-slate-500"><th className="px-3 py-2">To</th><th className="px-3 py-2">Subject</th><th className="px-3 py-2">Template</th><th className="px-3 py-2">Sent</th><th className="px-3 py-2">Status</th></tr></thead><tbody className="divide-y">{sentEmails.map(e => <tr key={e.id}><td className="px-3 py-2"><div className="font-medium">{e.candidate_name}</div><div className="text-xs text-slate-500">{e.candidate_email}</div></td><td className="px-3 py-2 max-w-xs truncate">{e.subject}</td><td className="px-3 py-2">{e.template_name}</td><td className="px-3 py-2 text-slate-500">{new Date(e.sent_at).toLocaleString()}</td><td className="px-3 py-2"><span className={'px-2 py-1 rounded text-xs font-medium ' + (e.status === 'delivered' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700')}>{e.status}</span></td></tr>)}</tbody></table></div>}
+          <div className="px-4 py-3 border-b"><h3 className="font-bold">Emails ({sentEmails.length})</h3></div>
+          {!sentEmails.length ? <div className="p-12 text-center text-slate-400">No emails sent yet</div> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-slate-50 text-left text-xs font-bold text-slate-500"><th className="px-3 py-2">To</th><th className="px-3 py-2">Subject</th><th className="px-3 py-2">Template</th><th className="px-3 py-2">Sent</th><th className="px-3 py-2">Status</th></tr></thead><tbody className="divide-y">{sentEmails.map(e => <tr key={e.id}><td className="px-3 py-2"><div className="font-medium">{e.candidate_name}</div><div className="text-xs text-slate-500">{e.candidate_email}</div></td><td className="px-3 py-2 max-w-xs truncate">{e.subject}</td><td className="px-3 py-2">{e.template_name}</td><td className="px-3 py-2 text-slate-500">{new Date(e.sent_at).toLocaleString()}</td><td className="px-3 py-2"><span className={'px-2 py-1 rounded text-xs font-medium ' + (e.status === 'delivered' ? 'bg-emerald-100 text-emerald-700' : e.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')}>{e.status}</span></td></tr>)}</tbody></table></div>}
         </div>}
 
         {activeTab === 'calendar' && <div className="grid md:grid-cols-3 gap-6">
@@ -478,7 +502,7 @@ export default function TalentRadar() {
         </div>
         <div className="space-y-1 mb-4 text-sm">
           {selectedCandidate.email && <p><strong>Email:</strong> <a href={'mailto:' + selectedCandidate.email} className="text-blue-600">{selectedCandidate.email}</a></p>}
-          {selectedCandidate.linkedin_url && <p><strong>LinkedIn:</strong> <a href={selectedCandidate.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600">View</a></p>}
+          {selectedCandidate.linkedin_url && <p><strong>LinkedIn:</strong> <a href={selectedCandidate.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600">View Profile</a></p>}
           {selectedCandidate.job_change_date && <p><strong>Changed:</strong> {new Date(selectedCandidate.job_change_date).toLocaleDateString()}</p>}
         </div>
         <div className="flex gap-2 justify-end pt-3 border-t">
@@ -490,15 +514,16 @@ export default function TalentRadar() {
 
       <Modal id="sendEmail">{selectedCandidate && <><h2 className="text-xl font-bold mb-4">Email {selectedCandidate.name}</h2>
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4"><p className="text-blue-800">{selectedCandidate.email}</p></div>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4"><p className="text-xs text-amber-700"><Icon name="externalLink" size={12} color="#d97706" /> Email will open in your default mail app</p></div>
         <p className="text-xs font-medium text-slate-500 mb-2">Select Template</p>
         <div className="space-y-2 max-h-48 overflow-y-auto mb-4">{emailTemplates.map(t => <div key={t.id} onClick={() => setSelectedTemplate(t)} className={'p-3 rounded-xl cursor-pointer border ' + (selectedTemplate?.id === t.id ? 'bg-blue-100 border-blue-500' : 'bg-slate-50 hover:bg-slate-100')}><p className="font-medium text-sm">{t.name}</p><p className="text-xs text-slate-500">{t.subject}</p></div>)}{!emailTemplates.length && <p className="text-slate-400 text-center py-4">Create a template first</p>}</div>
-        <div className="flex gap-3 justify-end pt-3 border-t"><button onClick={() => { closeModal('sendEmail'); setSelectedCandidate(null); setSelectedTemplate(null); }} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={() => handleSendEmail(selectedCandidate, selectedTemplate)} disabled={!selectedTemplate || isSaving} className="px-4 py-2 bg-blue-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Sending...' : 'Send'}</button></div>
+        <div className="flex gap-3 justify-end pt-3 border-t"><button onClick={() => { closeModal('sendEmail'); setSelectedCandidate(null); setSelectedTemplate(null); }} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={() => handleSendEmail(selectedCandidate, selectedTemplate)} disabled={!selectedTemplate || isSaving} className="px-4 py-2 bg-blue-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Opening...' : 'Open Email'}</button></div>
       </>}</Modal>
 
       <Modal id="template"><h2 className="text-xl font-bold mb-4">{editingTemplate ? 'Edit' : 'New'} Template</h2>
         <div className="space-y-3">
           <div><label className="block text-xs font-medium mb-1">Name *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={templateForm.name} onChange={e => setTemplateForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Initial Outreach" /></div>
-          <div><label className="block text-xs font-medium mb-1">Subject *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={templateForm.subject} onChange={e => setTemplateForm(p => ({ ...p, subject: e.target.value }))} placeholder="e.g. Congrats on {{newTitle}}!" /></div>
+          <div><label className="block text-xs font-medium mb-1">Subject *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={templateForm.subject} onChange={e => setTemplateForm(p => ({ ...p, subject: e.target.value }))} placeholder="e.g. Congrats on your new role!" /></div>
           <div><label className="block text-xs font-medium mb-1">Body *</label><textarea className="w-full px-3 py-2 border rounded-xl text-sm" rows={5} value={templateForm.body} onChange={e => setTemplateForm(p => ({ ...p, body: e.target.value }))} placeholder="Hi {{candidateName}}..." /></div>
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-3"><p className="text-xs font-bold text-blue-600 mb-1">Variables</p><p className="text-xs text-slate-600">{"{{candidateName}} {{company}} {{senderName}} {{newCompany}} {{newTitle}}"}</p></div>
         </div>
@@ -515,7 +540,6 @@ export default function TalentRadar() {
       </Modal>
 
       <Modal id="testEmail"><h2 className="text-xl font-bold mb-4">Add Test Email</h2>
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4"><p className="text-xs text-amber-700">Tests will send to: <strong>{TEST_EMAIL}</strong></p></div>
         <div className="space-y-3">
           <div><label className="block text-xs font-medium mb-1">Name *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={newTestEmail.name} onChange={e => setNewTestEmail(p => ({ ...p, name: e.target.value }))} placeholder="Test Person" /></div>
           <div><label className="block text-xs font-medium mb-1">Email *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={newTestEmail.email} onChange={e => setNewTestEmail(p => ({ ...p, email: e.target.value }))} placeholder="test@example.com" /></div>
@@ -525,18 +549,17 @@ export default function TalentRadar() {
       </Modal>
 
       <Modal id="sendTest">{selectedTestEmail && <><h2 className="text-xl font-bold mb-4">Send Test</h2>
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4"><p className="text-sm text-amber-700">Will send to: <strong>{TEST_EMAIL}</strong></p></div>
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4"><p className="text-sm text-emerald-700">Testing as: <strong>{selectedTestEmail.name}</strong></p></div>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4"><p className="text-sm text-emerald-700">To: <strong>{selectedTestEmail.email}</strong></p></div>
         <p className="text-xs font-medium text-slate-500 mb-2">Select Template</p>
         <div className="space-y-2 max-h-40 overflow-y-auto mb-4">{emailTemplates.map(t => <div key={t.id} onClick={() => setSelectedTemplate(t)} className={'p-3 rounded-xl cursor-pointer border ' + (selectedTemplate?.id === t.id ? 'bg-emerald-100 border-emerald-500' : 'bg-slate-50 hover:bg-slate-100')}><p className="font-medium text-sm">{t.name}</p></div>)}</div>
-        <div className="flex gap-3 justify-end pt-3 border-t"><button onClick={() => { closeModal('sendTest'); setSelectedTestEmail(null); setSelectedTemplate(null); }} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={handleSendTest} disabled={!selectedTemplate || isSaving} className="px-4 py-2 bg-emerald-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Sending...' : 'Send Test'}</button></div>
+        <div className="flex gap-3 justify-end pt-3 border-t"><button onClick={() => { closeModal('sendTest'); setSelectedTestEmail(null); setSelectedTemplate(null); }} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={handleSendTest} disabled={!selectedTemplate || isSaving} className="px-4 py-2 bg-emerald-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Opening...' : 'Open Email'}</button></div>
       </>}</Modal>
 
       <Modal id="settings"><h2 className="text-xl font-bold mb-4">Settings</h2>
         <div className="space-y-3">
           <div><label className="block text-xs font-medium mb-1">Your Name</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={settings.sender_name || ''} onChange={e => setSettings(p => ({ ...p, sender_name: e.target.value }))} /><p className="text-xs text-slate-400 mt-1">{"{{senderName}}"}</p></div>
           <div><label className="block text-xs font-medium mb-1">Company</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={settings.company_name || ''} onChange={e => setSettings(p => ({ ...p, company_name: e.target.value }))} /><p className="text-xs text-slate-400 mt-1">{"{{company}}"}</p></div>
-          <div className="border-t pt-3"><p className="text-sm font-medium mb-2">Email Config</p><div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3"><p className="text-sm text-emerald-700">✓ Resend connected</p><p className="text-xs text-emerald-600">From: {FROM_EMAIL}</p><p className="text-xs text-emerald-600">Tests: {TEST_EMAIL}</p></div></div>
+          <div className="border-t pt-3"><p className="text-sm font-medium mb-2">Email Delivery</p><div className="bg-amber-50 border border-amber-200 rounded-xl p-3"><p className="text-sm text-amber-700">Emails open in your default mail app (Outlook, Gmail, etc.)</p><p className="text-xs text-amber-600 mt-1">For automated sending, a backend service is required.</p></div></div>
         </div>
         <div className="flex gap-3 justify-end mt-4 pt-3 border-t"><button onClick={() => closeModal('settings')} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={saveSettings} disabled={isSaving} className="px-4 py-2 bg-blue-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Saving...' : 'Save'}</button></div>
       </Modal>
