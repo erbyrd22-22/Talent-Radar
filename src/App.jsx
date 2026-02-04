@@ -1,625 +1,791 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { Search, Users, Mail, Calendar, Save, Trash2, Send, Plus, Filter, X, Star, Building, MapPin, Briefcase, Clock, ChevronDown, UserPlus, Tag } from 'lucide-react';
 
-const supabaseUrl = 'https://reaqaxufwxcvarypfsdz.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJlYXFheHVmd3hjdmFyeXBmc2R6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0NzQwMzQsImV4cCI6MjA4NTA1MDAzNH0.8uvcFSRNQQDBH7GtxnaNhdv96iAiComLosBEtxEw818';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Initialize Supabase client - replace with your credentials
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'YOUR_SUPABASE_URL';
+const supabaseKey = process.env.REACT_APP_SUPABASE_KEY || 'YOUR_SUPABASE_KEY';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-const TEST_EMAIL = 'erbyrd22@gmail.com';
-
-const sendEmail = async (to, subject, body, isTest = false) => {
-  try {
-    const response = await fetch('/api/send-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to, subject, body, isTest }),
-    });
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
+// Industry categories with associated keywords for search
+const INDUSTRY_KEYWORDS = {
+  TECH: ['Data', 'AI', 'Machine Learning', 'Software', 'Cloud', 'DevOps', 'Cybersecurity', 'Analytics', 'Engineering', 'Product'],
+  FINANCE: ['Banking', 'Investment', 'Accounting', 'Risk', 'Trading', 'Wealth Management', 'Insurance', 'Compliance', 'Audit'],
+  HEALTHCARE: ['Medical', 'Nursing', 'Pharma', 'Biotech', 'Clinical', 'Research', 'Health IT', 'Patient Care', 'Diagnostics'],
+  MARKETING: ['Digital', 'Brand', 'Content', 'SEO', 'Social Media', 'Advertising', 'PR', 'Communications', 'Growth'],
+  SALES: ['Business Development', 'Account Management', 'Enterprise', 'Inside Sales', 'Channel', 'Partnerships', 'Revenue'],
+  HR: ['Recruiting', 'Talent Acquisition', 'People Ops', 'L&D', 'Compensation', 'HRIS', 'Employee Relations'],
+  OPERATIONS: ['Supply Chain', 'Logistics', 'Project Management', 'Process Improvement', 'Quality', 'Procurement'],
+  LEGAL: ['Corporate', 'Litigation', 'Contract', 'IP', 'Compliance', 'Regulatory', 'Privacy']
 };
 
-const Icon = ({ name, size = 20, color = "currentColor" }) => {
-  const icons = {
-    users: <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />,
-    mail: <><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></>,
-    send: <><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></>,
-    plus: <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>,
-    x: <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
-    check: <polyline points="20 6 9 17 4 12"/>,
-    eye: <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>,
-    edit: <><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>,
-    trash: <><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></>,
-    calendar: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>,
-    arrowRight: <><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></>,
-    arrowUp: <><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></>,
-    chevronLeft: <polyline points="15 18 9 12 15 6"/>,
-    chevronRight: <polyline points="9 18 15 12 9 6"/>,
-    chevronUp: <polyline points="18 15 12 9 6 15"/>,
-    chevronDown: <polyline points="6 9 12 15 18 9"/>,
-    refresh: <><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></>,
-    download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>,
-    save: <><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></>,
-    settings: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
-    activity: <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>,
-    file: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></>,
-    userPlus: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></>,
-    userCheck: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></>,
-    globe: <><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></>,
-    mapPin: <><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></>,
-    search: <><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>,
-  };
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icons[name]}</svg>;
-};
+// Location options including new cities
+const LOCATIONS = [
+  { value: '', label: 'All Locations' },
+  { value: 'Charlotte, NC', label: 'Charlotte, NC' },
+  { value: 'Tampa, FL', label: 'Tampa, FL' },
+  { value: 'New York, NY', label: 'New York, NY' },
+  { value: 'San Francisco, CA', label: 'San Francisco, CA' },
+  { value: 'Los Angeles, CA', label: 'Los Angeles, CA' },
+  { value: 'Chicago, IL', label: 'Chicago, IL' },
+  { value: 'Austin, TX', label: 'Austin, TX' },
+  { value: 'Seattle, WA', label: 'Seattle, WA' },
+  { value: 'Boston, MA', label: 'Boston, MA' },
+  { value: 'Denver, CO', label: 'Denver, CO' },
+  { value: 'Atlanta, GA', label: 'Atlanta, GA' },
+  { value: 'Miami, FL', label: 'Miami, FL' },
+  { value: 'Dallas, TX', label: 'Dallas, TX' },
+  { value: 'Phoenix, AZ', label: 'Phoenix, AZ' },
+  { value: 'Remote', label: 'Remote' }
+];
 
-const timeAgo = (date) => {
-  if (!date) return '';
-  const days = Math.floor((new Date() - new Date(date)) / 86400000);
-  if (days === 0) return 'Today';
-  if (days === 1) return '1 day ago';
-  if (days < 30) return days + ' days ago';
-  return Math.floor(days / 30) + ' months ago';
-};
-
-const MultiSelect = ({ label, options, selected, onChange, placeholder }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const allSelected = selected.length === 0;
-  const toggleOption = (opt) => {
-    if (opt === 'ALL') onChange([]);
-    else onChange(selected.includes(opt) ? selected.filter(s => s !== opt) : [...selected, opt]);
-  };
-  return (
-    <div className="relative">
-      <label className="block text-xs font-medium text-slate-500 mb-1">{label}</label>
-      <div onClick={() => setIsOpen(!isOpen)} className="w-full px-3 py-2 border rounded-xl text-sm cursor-pointer bg-white flex justify-between items-center">
-        <span className={allSelected ? 'text-slate-400' : ''}>{allSelected ? placeholder : selected.length === 1 ? selected[0] : selected.length + ' selected'}</span>
-        <Icon name={isOpen ? 'chevronUp' : 'chevronDown'} size={14} color="#94a3b8" />
-      </div>
-      {isOpen && <div className="absolute z-50 w-full mt-1 bg-white border rounded-xl shadow-lg max-h-48 overflow-y-auto">
-        <div onClick={() => toggleOption('ALL')} className={'px-3 py-2 cursor-pointer hover:bg-slate-50 flex items-center gap-2 ' + (allSelected ? 'bg-blue-50 text-blue-600' : '')}><div className={'w-4 h-4 rounded border flex items-center justify-center ' + (allSelected ? 'bg-blue-500 border-blue-500' : 'border-slate-300')}>{allSelected && <Icon name="check" size={10} color="white" />}</div>All</div>
-        {options.map(opt => <div key={opt} onClick={() => toggleOption(opt)} className={'px-3 py-2 cursor-pointer hover:bg-slate-50 flex items-center gap-2 ' + (selected.includes(opt) ? 'bg-blue-50 text-blue-600' : '')}><div className={'w-4 h-4 rounded border flex items-center justify-center ' + (selected.includes(opt) ? 'bg-blue-500 border-blue-500' : 'border-slate-300')}>{selected.includes(opt) && <Icon name="check" size={10} color="white" />}</div>{opt}</div>)}
-      </div>}
-    </div>
-  );
-};
-
-const generateSearchResults = (industries, levels, locations, dateStart, dateEnd, count) => {
-  const names = [['Sarah','Michael','Jennifer','David','Emily','James','Jessica','Robert','Amanda','Chris','Lauren','Daniel','Ashley','Matthew','Nicole'],['Johnson','Williams','Brown','Jones','Garcia','Miller','Davis','Rodriguez','Martinez','Wilson','Anderson','Taylor','Thomas','Moore','Jackson']];
-  const companies = { Technology: ['Google','Microsoft','Apple','Amazon','Meta','Salesforce','Oracle','Adobe','Netflix','Uber'], Finance: ['Goldman Sachs','JP Morgan','Morgan Stanley','Bank of America','Citigroup','BlackRock','Fidelity'], Healthcare: ['Johnson & Johnson','Pfizer','UnitedHealth','CVS Health','Cigna','Abbott','Merck'], Manufacturing: ['GE','Boeing','Caterpillar','3M','Honeywell','Ford','Tesla'], Retail: ['Walmart','Amazon','Target','Costco','Home Depot','Best Buy','Nordstrom'], Marketing: ['WPP','Omnicom','Publicis','IPG','Dentsu','Havas'], Sales: ['Salesforce','HubSpot','Oracle','SAP','Zendesk','Workday'], Engineering: ['SpaceX','Boeing','Lockheed Martin','Raytheon','AECOM','Jacobs'] };
-  const titles = { 'Entry Level': ['Associate','Analyst','Coordinator'], 'Mid Level': ['Senior Analyst','Manager','Lead'], 'Senior Level': ['Senior Manager','Principal','Director'], Director: ['Director','Senior Director','Regional Director'], VP: ['Vice President','SVP','VP Operations'], Executive: ['Executive Director','GM','Division Head'], 'C-Suite': ['CEO','CFO','CTO','COO','CMO'] };
-  const locs = locations.length ? locations : ['New York, NY','San Francisco, CA','Los Angeles, CA','Chicago, IL','Boston, MA','Seattle, WA','Austin, TX','Denver, CO','Atlanta, GA','Charlotte, NC','Dallas, TX','Miami, FL'];
-  const inds = industries.length ? industries : Object.keys(companies);
-  const lvls = levels.length ? levels : Object.keys(titles);
-  const startDate = dateStart ? new Date(dateStart) : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-  const endDate = dateEnd ? new Date(dateEnd) : new Date();
-  const dateRange = endDate - startDate;
-  const results = [];
-  for (let i = 0; i < count; i++) {
-    const ind = inds[Math.floor(Math.random() * inds.length)];
-    const lvl = lvls[Math.floor(Math.random() * lvls.length)];
-    const loc = locs[Math.floor(Math.random() * locs.length)];
-    const cos = companies[ind] || companies.Technology;
-    const tits = titles[lvl] || titles['Senior Level'];
-    const fn = names[0][Math.floor(Math.random() * names[0].length)];
-    const ln = names[1][Math.floor(Math.random() * names[1].length)];
-    const pc = cos[Math.floor(Math.random() * cos.length)];
-    let nc = cos[Math.floor(Math.random() * cos.length)]; while (nc === pc && cos.length > 1) nc = cos[Math.floor(Math.random() * cos.length)];
-    const pt = tits[Math.floor(Math.random() * tits.length)];
-    const nt = tits[Math.floor(Math.random() * tits.length)];
-    const cd = new Date(startDate.getTime() + Math.random() * dateRange);
-    results.push({ id: 'sr-' + Date.now() + '-' + i, name: fn + ' ' + ln, email: fn.toLowerCase() + '.' + ln.toLowerCase() + '@' + nc.toLowerCase().replace(/[^a-z]/g, '') + '.com', location: loc, previous_company: pc, previous_title: pt, previous_role: lvl, new_company: nc, new_title: nt, new_role: lvl, industry: ind, job_change_date: cd.toISOString().split('T')[0], change_type: Math.random() > 0.5 ? 'promotion' : 'lateral', match_score: Math.floor(Math.random() * 25) + 75, status: 'new', source: 'web_search', linkedin_url: 'https://linkedin.com/in/' + fn.toLowerCase() + ln.toLowerCase() });
-  }
-  return results.sort((a, b) => new Date(b.job_change_date) - new Date(a.job_change_date));
-};
+// Industry options
+const INDUSTRIES = [
+  { value: '', label: 'All Industries' },
+  { value: 'TECH', label: 'Technology' },
+  { value: 'FINANCE', label: 'Finance' },
+  { value: 'HEALTHCARE', label: 'Healthcare' },
+  { value: 'MARKETING', label: 'Marketing' },
+  { value: 'SALES', label: 'Sales' },
+  { value: 'HR', label: 'Human Resources' },
+  { value: 'OPERATIONS', label: 'Operations' },
+  { value: 'LEGAL', label: 'Legal' }
+];
 
 export default function TalentRadar() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [notification, setNotification] = useState(null);
+  const [activeTab, setActiveTab] = useState('search');
   const [candidates, setCandidates] = useState([]);
+  const [savedCandidates, setSavedCandidates] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
-  const [emailTemplates, setEmailTemplates] = useState([]);
-  const [sentEmails, setSentEmails] = useState([]);
-  const [followUps, setFollowUps] = useState([]);
-  const [testEmails, setTestEmails] = useState([]);
-  const [activities, setActivities] = useState([]);
-  const [settings, setSettings] = useState({ sender_name: '', company_name: '' });
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [searchParams, setSearchParams] = useState({ industries: [], jobLevels: [], locations: [], status: '', dateStart: '', dateEnd: '' });
-  const [sortConfig, setSortConfig] = useState({ key: 'job_change_date', direction: 'desc' });
-  const [selectedCandidate, setSelectedCandidate] = useState(null);
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [editingTemplate, setEditingTemplate] = useState(null);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [modals, setModals] = useState({});
-  const [selectedTestEmail, setSelectedTestEmail] = useState(null);
-  const [newCandidate, setNewCandidate] = useState({ name: '', email: '', location: '', previous_company: '', previous_title: '', previous_role: 'Mid Level', new_company: '', new_title: '', new_role: 'Mid Level', industry: 'Technology', job_change_date: '', status: 'new', change_type: 'lateral' });
-  const [newFollowUp, setNewFollowUp] = useState({ candidate_id: '', candidate_name: '', date: '', note: '' });
-  const [newTestEmail, setNewTestEmail] = useState({ name: '', email: '', company: '' });
-  const [templateForm, setTemplateForm] = useState({ name: '', subject: '', body: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+  
+  // Search filters
+  const [filters, setFilters] = useState({
+    location: '',
+    industry: '',
+    keyword: '',
+    dateFrom: '',
+    dateTo: '',
+    minMatchScore: 0
+  });
+  
+  // Email composition
+  const [emailDraft, setEmailDraft] = useState({
+    to: '',
+    subject: '',
+    body: '',
+    candidateId: null
+  });
+  
+  // Calendar/Follow-up
+  const [followUp, setFollowUp] = useState({
+    candidateId: '',
+    date: '',
+    notes: ''
+  });
+  
+  // Get keywords for selected industry
+  const availableKeywords = filters.industry ? INDUSTRY_KEYWORDS[filters.industry] || [] : [];
 
-  const industries = ['Technology', 'Finance', 'Healthcare', 'Manufacturing', 'Retail', 'Marketing', 'Sales', 'Engineering'];
-  const jobLevels = ['Entry Level', 'Mid Level', 'Senior Level', 'Director', 'VP', 'Executive', 'C-Suite'];
-  const locationsList = ['New York, NY', 'San Francisco, CA', 'Los Angeles, CA', 'Chicago, IL', 'Boston, MA', 'Seattle, WA', 'Austin, TX', 'Denver, CO', 'Atlanta, GA', 'Miami, FL', 'Dallas, TX', 'Charlotte, NC', 'Phoenix, AZ', 'Philadelphia, PA'];
-  const statuses = ['new', 'contacted', 'responded', 'interviewing', 'hired', 'not interested'];
+  // Load saved candidates on mount
+  useEffect(() => {
+    loadSavedCandidates();
+  }, []);
 
-  useEffect(() => { loadAllData(); }, []);
-
-  const loadAllData = async () => {
-    setIsLoading(true);
-    try {
-      const [c, t, e, f, te, a, s] = await Promise.all([
-        supabase.from('candidates').select('*').order('created_at', { ascending: false }),
-        supabase.from('email_templates').select('*').order('created_at', { ascending: false }),
-        supabase.from('sent_emails').select('*').order('sent_at', { ascending: false }),
-        supabase.from('follow_ups').select('*').order('date', { ascending: true }),
-        supabase.from('test_emails').select('*'),
-        supabase.from('activities').select('*').order('timestamp', { ascending: false }).limit(50),
-        supabase.from('settings').select('*').single()
-      ]);
-      setCandidates(c.data || []);
-      setEmailTemplates(t.data || []);
-      setSentEmails(e.data || []);
-      setFollowUps(f.data || []);
-      setTestEmails(te.data || []);
-      setActivities(a.data || []);
-      if (s.data) setSettings(s.data);
-      setIsConnected(true);
-    } catch (err) { 
-      console.error('Load error:', err);
-      setIsConnected(false); 
+  // Clear messages after delay
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 3000);
+      return () => clearTimeout(timer);
     }
-    setIsLoading(false);
-  };
+  }, [successMessage]);
 
-  const notify = (msg, type = 'success') => { setNotification({ msg, type }); setTimeout(() => setNotification(null), 4000); };
-  const logActivity = async (type, desc) => { 
-    try {
-      const { data } = await supabase.from('activities').insert([{ type, description: desc }]).select().single(); 
-      if (data) setActivities(p => [data, ...p]); 
-    } catch (err) { console.error('Activity log error:', err); }
-  };
-  const openModal = (m) => setModals(p => ({ ...p, [m]: true }));
-  const closeModal = (m) => setModals(p => ({ ...p, [m]: false }));
-
-  const searchJobChanges = async () => {
-    setIsSearching(true);
-    const txt = [searchParams.industries.length ? searchParams.industries.join(', ') : 'All Industries', searchParams.jobLevels.length ? searchParams.jobLevels.join(', ') : 'All Levels', searchParams.locations.length ? searchParams.locations.join(', ') : 'All Locations', searchParams.dateStart || searchParams.dateEnd ? (searchParams.dateStart || 'any') + ' to ' + (searchParams.dateEnd || 'now') : 'Last 90 days'].join(' | ');
-    await logActivity('search', 'Search: ' + txt);
-    setTimeout(() => {
-      const results = generateSearchResults(searchParams.industries, searchParams.jobLevels, searchParams.locations, searchParams.dateStart, searchParams.dateEnd, 15);
-      setSearchResults(results);
-      setActiveTab('search');
-      setIsSearching(false);
-      notify('Found ' + results.length + ' job changes!');
-    }, 1500);
-  };
-
-  const filteredCandidates = useMemo(() => {
-    let list = [...candidates];
-    if (searchParams.industries.length) list = list.filter(c => searchParams.industries.includes(c.industry));
-    if (searchParams.jobLevels.length) list = list.filter(c => searchParams.jobLevels.includes(c.new_role));
-    if (searchParams.locations.length) list = list.filter(c => searchParams.locations.some(l => c.location?.includes(l.split(',')[0])));
-    if (searchParams.status) list = list.filter(c => c.status === searchParams.status);
-    list.sort((a, b) => {
-      let av = a[sortConfig.key], bv = b[sortConfig.key];
-      if (sortConfig.key === 'job_change_date') { av = av ? new Date(av).getTime() : 0; bv = bv ? new Date(bv).getTime() : 0; }
-      else if (sortConfig.key === 'match_score') { av = av || 0; bv = bv || 0; }
-      else { av = (av || '').toString().toLowerCase(); bv = (bv || '').toString().toLowerCase(); }
-      return sortConfig.direction === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
-    });
-    return list;
-  }, [candidates, searchParams, sortConfig]);
-
-  const filteredSearchResults = useMemo(() => {
-    let list = [...searchResults];
-    if (searchParams.industries.length) list = list.filter(c => searchParams.industries.includes(c.industry));
-    if (searchParams.jobLevels.length) list = list.filter(c => searchParams.jobLevels.includes(c.new_role));
-    if (searchParams.locations.length) list = list.filter(c => searchParams.locations.some(l => c.location?.includes(l.split(',')[0])));
-    return list;
-  }, [searchResults, searchParams]);
-
-  const handleSort = (key) => setSortConfig(p => ({ key, direction: p.key === key && p.direction === 'desc' ? 'asc' : 'desc' }));
-
-  const saveSearchResult = async (result) => {
-    setIsSaving(true);
-    // Only include columns that exist in the database
-    const candidateData = {
-      name: result.name,
-      email: result.email || null,
-      location: result.location || null,
-      previous_company: result.previous_company || null,
-      previous_title: result.previous_title || null,
-      previous_role: result.previous_role || null,
-      new_company: result.new_company || null,
-      new_title: result.new_title || null,
-      new_role: result.new_role || null,
-      industry: result.industry || null,
-      job_change_date: result.job_change_date || null,
-      change_type: result.change_type || 'lateral',
-      match_score: result.match_score || 75,
-      status: 'new'
-    };
-    const { data, error } = await supabase.from('candidates').insert([candidateData]).select().single();
-    if (error) { console.error('Save error:', error); notify('Save failed: ' + error.message, 'error'); }
-    else if (data) { setCandidates(p => [data, ...p]); setSearchResults(p => p.filter(r => r.id !== result.id)); await logActivity('candidate', 'Saved: ' + data.name); notify('Saved to Candidates!'); }
-    setIsSaving(false);
-  };
-
-  const handleAddCandidate = async () => {
-    setIsSaving(true);
-    const { data, error } = await supabase.from('candidates').insert([{ ...newCandidate, match_score: Math.floor(Math.random() * 30) + 70 }]).select().single();
-    if (error) { console.error('Add error:', error); notify('Add failed', 'error'); }
-    else if (data) { setCandidates(p => [data, ...p]); await logActivity('candidate', 'Added: ' + data.name); notify('Added!'); closeModal('addCandidate'); setNewCandidate({ name: '', email: '', location: '', previous_company: '', previous_title: '', previous_role: 'Mid Level', new_company: '', new_title: '', new_role: 'Mid Level', industry: 'Technology', job_change_date: '', status: 'new', change_type: 'lateral' }); }
-    setIsSaving(false);
-  };
-
-  const handleDeleteCandidate = async (id) => {
-    if (id.toString().startsWith('sr-')) { setSearchResults(p => p.filter(x => x.id !== id)); notify('Removed'); closeModal('viewCandidate'); setSelectedCandidate(null); return; }
-    const c = candidates.find(x => x.id === id);
-    await supabase.from('candidates').delete().eq('id', id);
-    setCandidates(p => p.filter(x => x.id !== id));
-    await logActivity('candidate', 'Deleted: ' + c?.name); notify('Deleted'); closeModal('viewCandidate'); setSelectedCandidate(null);
-  };
-
-  const handleSaveTemplate = async () => {
-    setIsSaving(true);
-    if (editingTemplate) {
-      const { data } = await supabase.from('email_templates').update(templateForm).eq('id', editingTemplate.id).select().single();
-      if (data) setEmailTemplates(p => p.map(x => x.id === data.id ? data : x));
-    } else {
-      const { data } = await supabase.from('email_templates').insert([templateForm]).select().single();
-      if (data) setEmailTemplates(p => [data, ...p]);
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 5000);
+      return () => clearTimeout(timer);
     }
-    await logActivity('template', (editingTemplate ? 'Updated' : 'Created') + ': ' + templateForm.name);
-    notify('Saved!'); closeModal('template'); setEditingTemplate(null); setTemplateForm({ name: '', subject: '', body: '' }); setIsSaving(false);
+  }, [error]);
+
+  const loadSavedCandidates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('candidates')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setSavedCandidates(data || []);
+    } catch (err) {
+      console.error('Error loading candidates:', err);
+      setError('Failed to load saved candidates');
+    }
   };
 
-  const handleDeleteTemplate = async (id) => { const t = emailTemplates.find(x => x.id === id); await supabase.from('email_templates').delete().eq('id', id); setEmailTemplates(p => p.filter(x => x.id !== id)); await logActivity('template', 'Deleted: ' + t?.name); notify('Deleted'); };
-
-  const processTemplate = (text, cand) => text.replace(/\{\{candidateName\}\}/g, cand.name).replace(/\{\{company\}\}/g, settings.company_name || 'Our Company').replace(/\{\{senderName\}\}/g, settings.sender_name || 'Recruiter').replace(/\{\{newCompany\}\}/g, cand.new_company || '').replace(/\{\{newTitle\}\}/g, cand.new_title || '');
-
-  const handleSendEmail = async (cand, tmpl) => {
-    setIsSaving(true);
-    const subject = processTemplate(tmpl.subject, cand);
-    const body = processTemplate(tmpl.body, cand);
+  const handleSearch = async () => {
+    setLoading(true);
+    setError(null);
     
-    const result = await sendEmail(cand.email, subject, body, false);
-    const status = result.success ? 'delivered' : 'failed';
-    
-    const { data, error } = await supabase.from('sent_emails').insert([{ 
-      candidate_id: cand.id?.toString().startsWith('sr-') ? null : cand.id, 
-      candidate_name: cand.name, 
-      candidate_email: cand.email, 
-      template_id: tmpl.id, 
-      template_name: tmpl.name, 
-      subject, 
-      body, 
-      status, 
-      resend_id: result.id || null 
-    }]).select().single();
-    
-    if (error) { console.error('Email log error:', error); }
-    if (data) {
-      setSentEmails(p => [data, ...p]);
-      if (cand.id && !cand.id.toString().startsWith('sr-')) { 
-        await supabase.from('candidates').update({ status: 'contacted' }).eq('id', cand.id); 
-        setCandidates(p => p.map(c => c.id === cand.id ? { ...c, status: 'contacted' } : c)); 
+    try {
+      // Build query based on filters
+      let query = supabase.from('candidates').select('*');
+      
+      if (filters.location) {
+        query = query.ilike('location', `%${filters.location}%`);
       }
-      await logActivity('email', (result.success ? '✅ Sent to ' : '❌ Failed: ') + cand.name + ' (' + cand.email + ')');
-      notify(result.success ? 'Email sent!' : 'Failed: ' + result.error, result.success ? 'success' : 'error');
+      
+      if (filters.industry) {
+        query = query.eq('industry', filters.industry);
+      }
+      
+      if (filters.keyword) {
+        // Search in job title and skills
+        query = query.or(`current_title.ilike.%${filters.keyword}%,previous_title.ilike.%${filters.keyword}%`);
+      }
+      
+      if (filters.dateFrom) {
+        query = query.gte('job_change_date', filters.dateFrom);
+      }
+      
+      if (filters.dateTo) {
+        query = query.lte('job_change_date', filters.dateTo);
+      }
+      
+      if (filters.minMatchScore > 0) {
+        query = query.gte('match_score', filters.minMatchScore);
+      }
+      
+      const { data, error } = await query.order('match_score', { ascending: false });
+      
+      if (error) throw error;
+      setSearchResults(data || []);
+      setActiveTab('results');
+    } catch (err) {
+      console.error('Search error:', err);
+      setError('Search failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    closeModal('sendEmail'); setSelectedCandidate(null); setSelectedTemplate(null); setIsSaving(false);
   };
 
-  const handleAddFollowUp = async () => {
-    if (!newFollowUp.date || !newFollowUp.candidate_name) return;
-    setIsSaving(true);
-    const { data, error } = await supabase.from('follow_ups').insert([{ 
-      candidate_id: newFollowUp.candidate_id || null,
-      candidate_name: newFollowUp.candidate_name, 
-      date: newFollowUp.date, 
-      note: newFollowUp.note 
-    }]).select().single();
-    if (error) { console.error('Follow-up error:', error); notify('Failed to add', 'error'); }
-    else if (data) { setFollowUps(p => [...p, data].sort((a, b) => new Date(a.date) - new Date(b.date))); await logActivity('followup', 'Scheduled: ' + newFollowUp.candidate_name); notify('Added!'); }
-    closeModal('followUp'); setNewFollowUp({ candidate_id: '', candidate_name: '', date: '', note: '' }); setIsSaving(false);
+  const saveCandidate = async (candidate) => {
+    try {
+      // Map only required database columns
+      const candidateData = {
+        name: candidate.name,
+        email: candidate.email,
+        location: candidate.location,
+        current_company: candidate.current_company,
+        previous_company: candidate.previous_company,
+        current_title: candidate.current_title,
+        previous_title: candidate.previous_title,
+        industry: candidate.industry,
+        job_change_date: candidate.job_change_date,
+        match_score: candidate.match_score
+      };
+      
+      const { data, error } = await supabase
+        .from('candidates')
+        .insert([candidateData])
+        .select();
+      
+      if (error) throw error;
+      
+      setSavedCandidates(prev => [data[0], ...prev]);
+      setSuccessMessage(`${candidate.name} saved to candidates!`);
+    } catch (err) {
+      console.error('Save error:', err);
+      setError(`Failed to save candidate: ${err.message}`);
+    }
   };
 
-  const toggleFollowUp = async (f) => { const { data } = await supabase.from('follow_ups').update({ completed: !f.completed }).eq('id', f.id).select().single(); if (data) { setFollowUps(p => p.map(x => x.id === data.id ? data : x)); await logActivity('followup', (data.completed ? 'Completed' : 'Reopened') + ': ' + f.candidate_name); } };
-  const deleteFollowUp = async (id) => { await supabase.from('follow_ups').delete().eq('id', id); setFollowUps(p => p.filter(x => x.id !== id)); notify('Removed'); };
-
-  const handleAddTestEmail = async () => {
-    if (!newTestEmail.name || !newTestEmail.email) return;
-    setIsSaving(true);
-    const { data } = await supabase.from('test_emails').insert([newTestEmail]).select().single();
-    if (data) { setTestEmails(p => [...p, data]); await logActivity('test', 'Added test: ' + newTestEmail.email); }
-    notify('Added!'); closeModal('testEmail'); setNewTestEmail({ name: '', email: '', company: '' }); setIsSaving(false);
+  const deleteCandidate = async (id) => {
+    try {
+      const { error } = await supabase
+        .from('candidates')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      setSavedCandidates(prev => prev.filter(c => c.id !== id));
+      setSuccessMessage('Candidate removed');
+    } catch (err) {
+      console.error('Delete error:', err);
+      setError('Failed to delete candidate');
+    }
   };
 
-  const deleteTestEmail = async (id) => { await supabase.from('test_emails').delete().eq('id', id); setTestEmails(p => p.filter(x => x.id !== id)); notify('Removed'); };
-
-  const handleSendTest = async () => {
-    if (!selectedTemplate || !selectedTestEmail) return;
-    setIsSaving(true);
-    const cand = { name: selectedTestEmail.name, new_company: selectedTestEmail.company || 'Test Co', new_title: 'Test Title' };
-    const subject = '[TEST] ' + processTemplate(selectedTemplate.subject, cand);
-    const body = processTemplate(selectedTemplate.body, cand);
+  const sendEmail = async () => {
+    if (!emailDraft.to || !emailDraft.subject || !emailDraft.body) {
+      setError('Please fill in all email fields');
+      return;
+    }
     
-    const result = await sendEmail(selectedTestEmail.email, subject, body, true);
-    await logActivity('test', (result.success ? '✅ Test sent to ' : '❌ Test failed: ') + TEST_EMAIL);
-    notify(result.success ? 'Test sent to ' + TEST_EMAIL + '!' : 'Failed: ' + result.error, result.success ? 'success' : 'error');
-    setIsSaving(false); closeModal('sendTest'); setSelectedTestEmail(null); setSelectedTemplate(null);
+    setLoading(true);
+    try {
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: emailDraft.to,
+          subject: emailDraft.subject,
+          html: emailDraft.body.replace(/\n/g, '<br>'),
+          replyTo: 'your-email@gmail.com' // Replace with your email
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Email send failed');
+      }
+      
+      setSuccessMessage('Email sent successfully!');
+      setEmailDraft({ to: '', subject: '', body: '', candidateId: null });
+    } catch (err) {
+      console.error('Email error:', err);
+      setError(`Failed to send email: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const saveSettings = async () => { setIsSaving(true); await supabase.from('settings').upsert({ id: 1, ...settings }); await logActivity('settings', 'Updated settings'); notify('Saved!'); closeModal('settings'); setIsSaving(false); };
-  const exportData = () => { const blob = new Blob([JSON.stringify({ candidates, emailTemplates, sentEmails, followUps, activities, settings }, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'talent-radar.json'; a.click(); notify('Exported!'); };
-  const getDaysInMonth = (d) => { const y = d.getFullYear(), m = d.getMonth(), first = new Date(y, m, 1), last = new Date(y, m + 1, 0), days = []; for (let i = 0; i < first.getDay(); i++) days.push(null); for (let i = 1; i <= last.getDate(); i++) days.push(new Date(y, m, i)); return days; };
-  const getFollowUpsForDate = (d) => d ? followUps.filter(f => f.date === d.toISOString().split('T')[0]) : [];
-  const stats = useMemo(() => ({ saved: candidates.length, results: searchResults.length, delivered: sentEmails.filter(e => e.status === 'delivered').length, pending: followUps.filter(f => !f.completed).length }), [candidates, searchResults, sentEmails, followUps]);
-  const SortIcon = ({ col }) => sortConfig.key !== col ? <Icon name="chevronDown" size={12} color="#cbd5e1" /> : <Icon name={sortConfig.direction === 'asc' ? 'chevronUp' : 'chevronDown'} size={12} color="#3b82f6" />;
+  const scheduleFollowUp = async () => {
+    if (!followUp.candidateId || !followUp.date) {
+      setError('Please select a candidate and date');
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('follow_ups')
+        .insert([{
+          candidate_id: followUp.candidateId,
+          follow_up_date: followUp.date,
+          notes: followUp.notes
+        }]);
+      
+      if (error) throw error;
+      
+      setSuccessMessage('Follow-up scheduled!');
+      setFollowUp({ candidateId: '', date: '', notes: '' });
+    } catch (err) {
+      console.error('Follow-up error:', err);
+      setError('Failed to schedule follow-up');
+    }
+  };
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-50 to-blue-100"><div className="w-12 h-12 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin" /></div>;
+  const prepareEmail = (candidate) => {
+    setEmailDraft({
+      to: candidate.email,
+      subject: `Exciting Opportunity - ${candidate.current_title}`,
+      body: `Hi ${candidate.name},\n\nI noticed you recently joined ${candidate.current_company} as ${candidate.current_title}. Congratulations on the new role!\n\nI wanted to reach out because...\n\nBest regards`,
+      candidateId: candidate.id
+    });
+    setActiveTab('email');
+  };
 
-  const Modal = ({ id, children, wide }) => modals[id] && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => closeModal(id)}><div className={'bg-white rounded-2xl p-6 w-full max-h-[90vh] overflow-y-auto ' + (wide ? 'max-w-2xl' : 'max-w-lg')} onClick={e => e.stopPropagation()}>{children}</div></div>;
-
-  const CandidateTable = ({ data, showSave }) => (
-    <table className="w-full text-sm">
-      <thead><tr className="bg-slate-50 text-left text-xs font-bold text-slate-500 uppercase">
-        <th className="px-3 py-2 cursor-pointer" onClick={() => handleSort('name')}>Name <SortIcon col="name" /></th>
-        <th className="px-3 py-2">Previous</th>
-        <th className="px-2 py-2"></th>
-        <th className="px-3 py-2">New</th>
-        <th className="px-3 py-2 cursor-pointer" onClick={() => handleSort('job_change_date')}>Date <SortIcon col="job_change_date" /></th>
-        <th className="px-3 py-2">Status</th>
-        <th className="px-3 py-2">Actions</th>
-      </tr></thead>
-      <tbody className="divide-y">{data.map(c => <tr key={c.id} className={c.source === 'web_search' ? 'bg-violet-50/50' : ''}>
-        <td className="px-3 py-2"><div className="font-medium">{c.name}{c.source === 'web_search' && <span className="ml-1 text-xs bg-violet-100 text-violet-600 px-1 rounded">New</span>}</div><div className="text-xs text-slate-500">{c.location}</div></td>
-        <td className="px-3 py-2"><div className="bg-red-50 border border-red-200 rounded px-2 py-1 text-xs"><div className="font-medium text-red-800">{c.previous_title}</div><div className="text-red-600">{c.previous_company}</div></div></td>
-        <td className="px-1 py-2"><div className={'w-5 h-5 rounded-full flex items-center justify-center ' + (c.change_type === 'promotion' ? 'bg-emerald-100' : 'bg-violet-100')}><Icon name={c.change_type === 'promotion' ? 'arrowUp' : 'arrowRight'} size={12} color={c.change_type === 'promotion' ? '#10b981' : '#8b5cf6'} /></div></td>
-        <td className="px-3 py-2"><div className="bg-emerald-50 border border-emerald-200 rounded px-2 py-1 text-xs"><div className="font-medium text-emerald-800">{c.new_title}</div><div className="text-emerald-600">{c.new_company}</div></div></td>
-        <td className="px-3 py-2"><div className="text-xs">{c.job_change_date ? new Date(c.job_change_date).toLocaleDateString() : '-'}</div><div className="text-xs text-slate-400">{timeAgo(c.job_change_date)}</div></td>
-        <td className="px-3 py-2"><span className={'px-2 py-1 rounded text-xs font-medium ' + (c.status === 'contacted' ? 'bg-blue-100 text-blue-700' : c.status === 'responded' ? 'bg-emerald-100 text-emerald-700' : c.status === 'interviewing' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600')}>{c.status}</span></td>
-        <td className="px-3 py-2"><div className="flex gap-1">
-          <button onClick={() => { setSelectedCandidate(c); openModal('viewCandidate'); }} className="p-1.5 bg-slate-100 rounded hover:bg-slate-200" title="View"><Icon name="eye" size={12} color="#64748b" /></button>
-          {c.email && <button onClick={() => { setSelectedCandidate(c); openModal('sendEmail'); }} className="p-1.5 bg-blue-500 rounded hover:bg-blue-600" title="Send Email"><Icon name="send" size={12} color="white" /></button>}
-          {showSave && c.source === 'web_search' && <button onClick={() => saveSearchResult(c)} className="p-1.5 bg-emerald-500 rounded hover:bg-emerald-600" title="Save to Candidates"><Icon name="save" size={12} color="white" /></button>}
-          <button onClick={() => handleDeleteCandidate(c.id)} className="p-1.5 bg-red-50 rounded hover:bg-red-100" title="Delete"><Icon name="trash" size={12} color="#ef4444" /></button>
-        </div></td>
-      </tr>)}</tbody>
-    </table>
+  const CandidateCard = ({ candidate, isSearchResult = false }) => (
+    <div className="bg-white rounded-lg shadow-md p-4 mb-4 hover:shadow-lg transition-shadow">
+      <div className="flex justify-between items-start">
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-gray-800">{candidate.name}</h3>
+          <p className="text-sm text-gray-600 flex items-center gap-1">
+            <Briefcase size={14} />
+            {candidate.current_title} at {candidate.current_company}
+          </p>
+          {candidate.previous_company && (
+            <p className="text-xs text-gray-500">
+              Previously: {candidate.previous_title} at {candidate.previous_company}
+            </p>
+          )}
+          <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+            <span className="flex items-center gap-1">
+              <MapPin size={14} />
+              {candidate.location}
+            </span>
+            <span className="flex items-center gap-1">
+              <Building size={14} />
+              {INDUSTRIES.find(i => i.value === candidate.industry)?.label || candidate.industry}
+            </span>
+            {candidate.job_change_date && (
+              <span className="flex items-center gap-1">
+                <Clock size={14} />
+                Changed: {new Date(candidate.job_change_date).toLocaleDateString()}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          {candidate.match_score && (
+            <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded flex items-center gap-1">
+              <Star size={12} />
+              {candidate.match_score}% Match
+            </span>
+          )}
+          <div className="flex gap-2">
+            {isSearchResult && (
+              <button
+                onClick={() => saveCandidate(candidate)}
+                className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                title="Save to Candidates"
+              >
+                <UserPlus size={18} />
+              </button>
+            )}
+            <button
+              onClick={() => prepareEmail(candidate)}
+              className="p-2 text-purple-600 hover:bg-purple-50 rounded-full transition-colors"
+              title="Send Email"
+            >
+              <Mail size={18} />
+            </button>
+            {!isSearchResult && (
+              <button
+                onClick={() => deleteCandidate(candidate.id)}
+                className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                title="Remove"
+              >
+                <Trash2 size={18} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50 text-slate-700">
-      {notification && <div className={'fixed bottom-5 right-5 px-5 py-3 rounded-xl z-50 shadow-lg text-white ' + (notification.type === 'error' ? 'bg-red-500' : 'bg-emerald-500')}>{notification.msg}</div>}
-
-      <header className="bg-white/90 border-b px-6 py-4 flex items-center justify-between sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center"><Icon name="users" size={22} color="white" /></div>
-          <div><h1 className="text-xl font-bold text-blue-600">TalentRadar</h1><div className="text-xs" style={{ color: isConnected ? '#10b981' : '#ef4444' }}>{isConnected ? '● Connected' : '○ Offline'}</div></div>
-        </div>
-        <div className="flex gap-3 items-center">
-          {[{ l: 'Saved', v: stats.saved, c: '#3b82f6' }, { l: 'Results', v: stats.results, c: '#8b5cf6' }, { l: 'Emails', v: stats.delivered, c: '#10b981' }].map((s, i) => <div key={i} className="text-center px-3 border-r last:border-0"><div className="text-lg font-bold" style={{ color: s.c }}>{s.v}</div><div className="text-xs text-slate-500">{s.l}</div></div>)}
-          <button onClick={loadAllData} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200"><Icon name="refresh" size={16} color="#64748b" /></button>
-          <button onClick={exportData} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200"><Icon name="download" size={16} color="#64748b" /></button>
-          <button onClick={() => openModal('settings')} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200"><Icon name="settings" size={16} color="#64748b" /></button>
+    <div className="min-h-screen bg-gray-100">
+      {/* Header */}
+      <header className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 shadow-lg">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Users size={28} />
+            TalentRadar
+          </h1>
+          <p className="text-blue-100">Recruitment Pipeline Manager</p>
         </div>
       </header>
 
-      <nav className="flex gap-2 px-6 py-3 bg-white/50 border-b overflow-x-auto">
-        {[
-          { id: 'dashboard', l: 'Dashboard', i: 'search' }, 
-          { id: 'candidates', l: 'Candidates', i: 'userCheck' }, 
-          { id: 'search', l: 'Search Results', i: 'globe' }, 
-          { id: 'emails', l: 'Emails', i: 'mail' }, 
-          { id: 'calendar', l: 'Calendar', i: 'calendar' }, 
-          { id: 'templates', l: 'Templates', i: 'file' }, 
-          { id: 'activity', l: 'Activity', i: 'activity' }
-        ].map(t => <button key={t.id} onClick={() => setActiveTab(t.id)} className={'px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-medium whitespace-nowrap ' + (activeTab === t.id ? 'bg-blue-500 text-white' : 'bg-white text-slate-600 hover:bg-slate-100')}><Icon name={t.i} size={16} color={activeTab === t.id ? 'white' : '#64748b'} />{t.l}{t.id === 'candidates' && candidates.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-xs">{candidates.length}</span>}{t.id === 'search' && searchResults.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-xs">{searchResults.length}</span>}</button>)}
+      {/* Messages */}
+      {error && (
+        <div className="max-w-6xl mx-auto mt-4 px-4">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded flex justify-between items-center">
+            <span>{error}</span>
+            <button onClick={() => setError(null)}><X size={18} /></button>
+          </div>
+        </div>
+      )}
+      
+      {successMessage && (
+        <div className="max-w-6xl mx-auto mt-4 px-4">
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+            {successMessage}
+          </div>
+        </div>
+      )}
+
+      {/* Navigation Tabs */}
+      <nav className="max-w-6xl mx-auto mt-4 px-4">
+        <div className="flex gap-2 bg-white rounded-lg p-1 shadow">
+          {[
+            { id: 'search', label: 'Search', icon: Search },
+            { id: 'results', label: 'Search Results', icon: Filter },
+            { id: 'candidates', label: 'Candidates', icon: Users },
+            { id: 'email', label: 'Email', icon: Mail },
+            { id: 'calendar', label: 'Follow-ups', icon: Calendar }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors flex-1 justify-center ${
+                activeTab === tab.id
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <tab.icon size={18} />
+              {tab.label}
+              {tab.id === 'candidates' && savedCandidates.length > 0 && (
+                <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
+                  {savedCandidates.length}
+                </span>
+              )}
+              {tab.id === 'results' && searchResults.length > 0 && (
+                <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">
+                  {searchResults.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </nav>
 
-      <main className="p-6">
-        {activeTab === 'dashboard' && <div className="space-y-6">
-          <div className="bg-white rounded-2xl border p-6">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Icon name="globe" size={20} color="#3b82f6" />Search Job Changes</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
-              <MultiSelect label="Industry" options={industries} selected={searchParams.industries} onChange={v => setSearchParams(p => ({ ...p, industries: v }))} placeholder="All" />
-              <MultiSelect label="Job Level" options={jobLevels} selected={searchParams.jobLevels} onChange={v => setSearchParams(p => ({ ...p, jobLevels: v }))} placeholder="All" />
-              <MultiSelect label="Location" options={locationsList} selected={searchParams.locations} onChange={v => setSearchParams(p => ({ ...p, locations: v }))} placeholder="All" />
-              <div><label className="block text-xs font-medium text-slate-500 mb-1">Date From</label><input type="date" className="w-full px-3 py-2 border rounded-xl text-sm" value={searchParams.dateStart} onChange={e => setSearchParams(p => ({ ...p, dateStart: e.target.value }))} /></div>
-              <div><label className="block text-xs font-medium text-slate-500 mb-1">Date To</label><input type="date" className="w-full px-3 py-2 border rounded-xl text-sm" value={searchParams.dateEnd} onChange={e => setSearchParams(p => ({ ...p, dateEnd: e.target.value }))} /></div>
-              <div className="flex items-end"><button onClick={searchJobChanges} disabled={isSearching} className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50">{isSearching ? 'Searching...' : <><Icon name="search" size={16} color="white" />Search</>}</button></div>
-            </div>
-          </div>
+      {/* Main Content */}
+      <main className="max-w-6xl mx-auto p-4">
+        {/* Search Tab */}
+        {activeTab === 'search' && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Search size={24} />
+              Find Candidates
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              {/* Location Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <MapPin size={14} className="inline mr-1" />
+                  Location
+                </label>
+                <select
+                  value={filters.location}
+                  onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
+                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {LOCATIONS.map(loc => (
+                    <option key={loc.value} value={loc.value}>{loc.label}</option>
+                  ))}
+                </select>
+              </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-2xl border p-6">
-              <h3 className="font-bold mb-4">Quick Actions</h3>
-              <div className="space-y-3">
-                <button onClick={() => openModal('addCandidate')} className="w-full py-2.5 bg-blue-500 text-white rounded-xl font-medium flex items-center justify-center gap-2"><Icon name="userPlus" size={16} color="white" />Add Candidate</button>
-                <button onClick={() => { setEditingTemplate(null); setTemplateForm({ name: '', subject: '', body: '' }); openModal('template'); }} className="w-full py-2.5 border-2 rounded-xl font-medium flex items-center justify-center gap-2"><Icon name="plus" size={16} />New Template</button>
-                <button onClick={() => openModal('testEmail')} className="w-full py-2.5 border-2 rounded-xl font-medium flex items-center justify-center gap-2"><Icon name="mail" size={16} />Add Test Email</button>
+              {/* Industry Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Building size={14} className="inline mr-1" />
+                  Industry
+                </label>
+                <select
+                  value={filters.industry}
+                  onChange={(e) => setFilters(prev => ({ 
+                    ...prev, 
+                    industry: e.target.value,
+                    keyword: '' // Reset keyword when industry changes
+                  }))}
+                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {INDUSTRIES.map(ind => (
+                    <option key={ind.value} value={ind.value}>{ind.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Keyword Search - Only shown when industry is selected */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Tag size={14} className="inline mr-1" />
+                  Keyword Search
+                </label>
+                {filters.industry ? (
+                  <select
+                    value={filters.keyword}
+                    onChange={(e) => setFilters(prev => ({ ...prev, keyword: e.target.value }))}
+                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">All Keywords</option>
+                    {availableKeywords.map(kw => (
+                      <option key={kw} value={kw}>{kw}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={filters.keyword}
+                    onChange={(e) => setFilters(prev => ({ ...prev, keyword: e.target.value }))}
+                    placeholder="Select industry for keywords or type here..."
+                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                )}
+                {filters.industry && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Keywords for {INDUSTRIES.find(i => i.value === filters.industry)?.label}
+                  </p>
+                )}
+              </div>
+
+              {/* Date Range - From */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Clock size={14} className="inline mr-1" />
+                  Job Change From
+                </label>
+                <input
+                  type="date"
+                  value={filters.dateFrom}
+                  onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* Date Range - To */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Clock size={14} className="inline mr-1" />
+                  Job Change To
+                </label>
+                <input
+                  type="date"
+                  value={filters.dateTo}
+                  onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* Match Score Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Star size={14} className="inline mr-1" />
+                  Min Match Score: {filters.minMatchScore}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={filters.minMatchScore}
+                  onChange={(e) => setFilters(prev => ({ ...prev, minMatchScore: parseInt(e.target.value) }))}
+                  className="w-full"
+                />
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border p-6">
-              <div className="flex justify-between items-center mb-4"><h3 className="font-bold">Templates ({emailTemplates.length})</h3></div>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {emailTemplates.map(t => <div key={t.id} className="p-3 bg-slate-50 rounded-xl flex justify-between items-center"><div className="truncate flex-1"><div className="font-medium text-sm truncate">{t.name}</div><div className="text-xs text-slate-500 truncate">{t.subject}</div></div><div className="flex gap-1 ml-2"><button onClick={() => { setEditingTemplate(t); setTemplateForm(t); openModal('template'); }} className="p-1.5 hover:bg-slate-200 rounded"><Icon name="edit" size={12} color="#64748b" /></button><button onClick={() => handleDeleteTemplate(t.id)} className="p-1.5 hover:bg-red-100 rounded"><Icon name="trash" size={12} color="#ef4444" /></button></div></div>)}
-                {!emailTemplates.length && <p className="text-slate-400 text-sm text-center py-6">No templates yet</p>}
+            {/* Active Filters Display */}
+            {(filters.location || filters.industry || filters.keyword || filters.dateFrom || filters.dateTo) && (
+              <div className="mb-4 flex flex-wrap gap-2">
+                <span className="text-sm text-gray-600">Active filters:</span>
+                {filters.location && (
+                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                    <MapPin size={12} /> {filters.location}
+                    <button onClick={() => setFilters(prev => ({ ...prev, location: '' }))} className="hover:text-blue-900">
+                      <X size={12} />
+                    </button>
+                  </span>
+                )}
+                {filters.industry && (
+                  <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                    <Building size={12} /> {INDUSTRIES.find(i => i.value === filters.industry)?.label}
+                    <button onClick={() => setFilters(prev => ({ ...prev, industry: '', keyword: '' }))} className="hover:text-purple-900">
+                      <X size={12} />
+                    </button>
+                  </span>
+                )}
+                {filters.keyword && (
+                  <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                    <Tag size={12} /> {filters.keyword}
+                    <button onClick={() => setFilters(prev => ({ ...prev, keyword: '' }))} className="hover:text-green-900">
+                      <X size={12} />
+                    </button>
+                  </span>
+                )}
+                {filters.dateFrom && (
+                  <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                    <Clock size={12} /> From: {filters.dateFrom}
+                    <button onClick={() => setFilters(prev => ({ ...prev, dateFrom: '' }))} className="hover:text-orange-900">
+                      <X size={12} />
+                    </button>
+                  </span>
+                )}
+                {filters.dateTo && (
+                  <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                    <Clock size={12} /> To: {filters.dateTo}
+                    <button onClick={() => setFilters(prev => ({ ...prev, dateTo: '' }))} className="hover:text-orange-900">
+                      <X size={12} />
+                    </button>
+                  </span>
+                )}
+                <button
+                  onClick={() => setFilters({ location: '', industry: '', keyword: '', dateFrom: '', dateTo: '', minMatchScore: 0 })}
+                  className="text-xs text-red-600 hover:text-red-800 underline"
+                >
+                  Clear all
+                </button>
               </div>
-            </div>
+            )}
 
-            <div className="bg-white rounded-2xl border p-6">
-              <div className="flex justify-between items-center mb-2"><h3 className="font-bold">Test Emails</h3></div>
-              <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2 mb-3">Tests go to: {TEST_EMAIL}</p>
-              <div className="space-y-2 max-h-36 overflow-y-auto">
-                {testEmails.map(t => <div key={t.id} className="p-2 bg-emerald-50 rounded-xl flex justify-between items-center"><div className="truncate"><div className="font-medium text-sm text-emerald-800 truncate">{t.name}</div><div className="text-xs text-emerald-600 truncate">{t.email}</div></div><div className="flex gap-1"><button onClick={() => { setSelectedTestEmail(t); openModal('sendTest'); }} className="px-2 py-1 bg-emerald-500 text-white rounded text-xs">Test</button><button onClick={() => deleteTestEmail(t.id)} className="p-1"><Icon name="trash" size={12} color="#ef4444" /></button></div></div>)}
-                {!testEmails.length && <p className="text-slate-400 text-sm text-center py-4">No test emails</p>}
+            <button
+              onClick={handleSearch}
+              disabled={loading}
+              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  Searching...
+                </>
+              ) : (
+                <>
+                  <Search size={20} />
+                  Search Candidates
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* Search Results Tab */}
+        {activeTab === 'results' && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Filter size={24} />
+              Search Results ({searchResults.length})
+            </h2>
+            {searchResults.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Search size={48} className="mx-auto mb-4 opacity-50" />
+                <p>No search results yet. Use the Search tab to find candidates.</p>
               </div>
+            ) : (
+              <div>
+                {searchResults.map(candidate => (
+                  <CandidateCard key={candidate.id} candidate={candidate} isSearchResult={true} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Candidates Tab */}
+        {activeTab === 'candidates' && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Users size={24} />
+              Saved Candidates ({savedCandidates.length})
+            </h2>
+            {savedCandidates.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Users size={48} className="mx-auto mb-4 opacity-50" />
+                <p>No saved candidates yet. Search and save candidates to build your pipeline.</p>
+              </div>
+            ) : (
+              <div>
+                {savedCandidates.map(candidate => (
+                  <CandidateCard key={candidate.id} candidate={candidate} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Email Tab */}
+        {activeTab === 'email' && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Mail size={24} />
+              Compose Email
+            </h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">To</label>
+                <input
+                  type="email"
+                  value={emailDraft.to}
+                  onChange={(e) => setEmailDraft(prev => ({ ...prev, to: e.target.value }))}
+                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="candidate@email.com"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                <input
+                  type="text"
+                  value={emailDraft.subject}
+                  onChange={(e) => setEmailDraft(prev => ({ ...prev, subject: e.target.value }))}
+                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Email subject"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                <textarea
+                  value={emailDraft.body}
+                  onChange={(e) => setEmailDraft(prev => ({ ...prev, body: e.target.value }))}
+                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 h-48"
+                  placeholder="Write your message..."
+                />
+              </div>
+              
+              <button
+                onClick={sendEmail}
+                disabled={loading}
+                className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send size={20} />
+                    Send Email
+                  </>
+                )}
+              </button>
             </div>
           </div>
+        )}
 
-          <div className="bg-white rounded-2xl border p-6">
-            <h3 className="font-bold mb-4">Recent Activity</h3>
-            <div className="space-y-2 max-h-64 overflow-y-auto">{activities.slice(0, 10).map(a => <div key={a.id} className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl"><div className={'w-8 h-8 rounded-lg flex items-center justify-center ' + (a.type === 'email' ? 'bg-emerald-100' : a.type === 'search' ? 'bg-blue-100' : 'bg-violet-100')}><Icon name={a.type === 'email' ? 'mail' : a.type === 'search' ? 'search' : 'users'} size={14} color={a.type === 'email' ? '#10b981' : a.type === 'search' ? '#3b82f6' : '#8b5cf6'} /></div><div className="flex-1 min-w-0"><div className="text-sm truncate">{a.description}</div><div className="text-xs text-slate-400">{new Date(a.timestamp).toLocaleString()}</div></div></div>)}{!activities.length && <p className="text-slate-400 text-center py-6">No activity yet</p>}</div>
-          </div>
-        </div>}
-
-        {activeTab === 'candidates' && <div className="space-y-4">
-          <div className="bg-white rounded-2xl border p-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-bold flex items-center gap-2"><Icon name="userCheck" size={20} color="#3b82f6" />Saved Candidates ({candidates.length})</h2>
-              <button onClick={() => openModal('addCandidate')} className="px-4 py-2 bg-blue-500 text-white rounded-xl font-medium flex items-center gap-2"><Icon name="plus" size={16} color="white" />Add Candidate</button>
+        {/* Follow-ups Tab */}
+        {activeTab === 'calendar' && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Calendar size={24} />
+              Schedule Follow-up
+            </h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Select Candidate</label>
+                <select
+                  value={followUp.candidateId}
+                  onChange={(e) => setFollowUp(prev => ({ ...prev, candidateId: e.target.value }))}
+                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Choose a candidate...</option>
+                  {savedCandidates.map(candidate => (
+                    <option key={candidate.id} value={candidate.id}>
+                      {candidate.name} - {candidate.current_title} at {candidate.current_company}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Follow-up Date</label>
+                <input
+                  type="datetime-local"
+                  value={followUp.date}
+                  onChange={(e) => setFollowUp(prev => ({ ...prev, date: e.target.value }))}
+                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea
+                  value={followUp.notes}
+                  onChange={(e) => setFollowUp(prev => ({ ...prev, notes: e.target.value }))}
+                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 h-24"
+                  placeholder="Add notes for this follow-up..."
+                />
+              </div>
+              
+              <button
+                onClick={scheduleFollowUp}
+                className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <Plus size={20} />
+                Schedule Follow-up
+              </button>
             </div>
           </div>
-          <div className="bg-white rounded-2xl border overflow-hidden">
-            {!candidates.length ? <div className="p-12 text-center text-slate-400"><Icon name="users" size={48} color="#cbd5e1" /><p className="mt-4">No saved candidates yet</p><p className="text-sm">Search for job changes and save candidates here</p></div> : <div className="overflow-x-auto"><CandidateTable data={filteredCandidates} showSave={false} /></div>}
-          </div>
-        </div>}
-
-        {activeTab === 'search' && <div className="space-y-4">
-          <div className="bg-white rounded-2xl border p-4">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
-              <MultiSelect label="Industry" options={industries} selected={searchParams.industries} onChange={v => setSearchParams(p => ({ ...p, industries: v }))} placeholder="All" />
-              <MultiSelect label="Level" options={jobLevels} selected={searchParams.jobLevels} onChange={v => setSearchParams(p => ({ ...p, jobLevels: v }))} placeholder="All" />
-              <MultiSelect label="Location" options={locationsList} selected={searchParams.locations} onChange={v => setSearchParams(p => ({ ...p, locations: v }))} placeholder="All" />
-              <div className="flex gap-2 col-span-2"><button onClick={searchJobChanges} disabled={isSearching} className="flex-1 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-medium">{isSearching ? 'Searching...' : 'Search'}</button>{searchResults.length > 0 && <button onClick={() => setSearchResults([])} className="px-4 py-2 border rounded-xl text-red-500">Clear</button>}</div>
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl border overflow-hidden">
-            <div className="px-4 py-3 border-b"><h3 className="font-bold">Search Results ({filteredSearchResults.length})</h3></div>
-            {!searchResults.length ? <div className="p-12 text-center text-slate-400"><Icon name="search" size={48} color="#cbd5e1" /><p className="mt-4">No search results</p><p className="text-sm">Use the search on Dashboard to find job changes</p></div> : <div className="overflow-x-auto"><CandidateTable data={filteredSearchResults} showSave={true} /></div>}
-          </div>
-        </div>}
-
-        {activeTab === 'emails' && <div className="bg-white rounded-2xl border overflow-hidden">
-          <div className="px-4 py-3 border-b flex justify-between items-center"><h3 className="font-bold">Sent Emails ({sentEmails.length})</h3><div className="flex gap-2 text-xs"><span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded">✓ {sentEmails.filter(e => e.status === 'delivered').length} delivered</span><span className="px-2 py-1 bg-red-100 text-red-700 rounded">✗ {sentEmails.filter(e => e.status === 'failed').length} failed</span></div></div>
-          {!sentEmails.length ? <div className="p-12 text-center text-slate-400"><Icon name="mail" size={48} color="#cbd5e1" /><p className="mt-4">No emails sent yet</p><p className="text-sm">Send emails to candidates to see them here</p></div> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-slate-50 text-left text-xs font-bold text-slate-500"><th className="px-3 py-2">To</th><th className="px-3 py-2">Subject</th><th className="px-3 py-2">Template</th><th className="px-3 py-2">Sent</th><th className="px-3 py-2">Status</th></tr></thead><tbody className="divide-y">{sentEmails.map(e => <tr key={e.id}><td className="px-3 py-2"><div className="font-medium">{e.candidate_name}</div><div className="text-xs text-slate-500">{e.candidate_email}</div></td><td className="px-3 py-2 max-w-xs truncate">{e.subject}</td><td className="px-3 py-2">{e.template_name}</td><td className="px-3 py-2 text-slate-500">{new Date(e.sent_at).toLocaleString()}</td><td className="px-3 py-2"><span className={'px-2 py-1 rounded text-xs font-medium ' + (e.status === 'delivered' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700')}>{e.status}</span></td></tr>)}</tbody></table></div>}
-        </div>}
-
-        {activeTab === 'calendar' && <div className="grid md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 bg-white rounded-2xl border p-6">
-            <div className="flex justify-between items-center mb-4"><h3 className="font-bold">{currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h3><div className="flex gap-2"><button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))} className="p-2 bg-slate-100 rounded hover:bg-slate-200"><Icon name="chevronLeft" size={16} /></button><button onClick={() => setCurrentMonth(new Date())} className="px-3 py-2 bg-slate-100 rounded text-sm hover:bg-slate-200">Today</button><button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))} className="p-2 bg-slate-100 rounded hover:bg-slate-200"><Icon name="chevronRight" size={16} /></button></div></div>
-            <div className="grid grid-cols-7 gap-1 mb-2">{['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <div key={i} className="text-center text-xs font-bold text-slate-400 py-2">{d}</div>)}</div>
-            <div className="grid grid-cols-7 gap-1">{getDaysInMonth(currentMonth).map((d, i) => { const fups = getFollowUpsForDate(d); const isToday = d && d.toDateString() === new Date().toDateString(); return <div key={i} onClick={() => d && (setNewFollowUp(p => ({ ...p, date: d.toISOString().split('T')[0] })), openModal('followUp'))} className={'min-h-[60px] p-1 rounded cursor-pointer text-sm ' + (isToday ? 'bg-blue-100 border-2 border-blue-500' : d ? 'bg-slate-50 hover:bg-slate-100' : '')}>{d && <><div className={'font-medium ' + (isToday ? 'text-blue-600' : '')}>{d.getDate()}</div>{fups.slice(0, 2).map(f => <div key={f.id} className={'text-xs px-1 rounded truncate mt-0.5 ' + (f.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}>{f.candidate_name}</div>)}</>}</div>; })}</div>
-          </div>
-          <div className="bg-white rounded-2xl border p-6">
-            <div className="flex justify-between items-center mb-4"><h3 className="font-bold">Follow-ups ({stats.pending})</h3><button onClick={() => { setNewFollowUp({ candidate_id: '', candidate_name: '', date: '', note: '' }); openModal('followUp'); }} className="p-2 bg-blue-50 rounded hover:bg-blue-100"><Icon name="plus" size={16} color="#3b82f6" /></button></div>
-            <div className="space-y-2 max-h-80 overflow-y-auto">{followUps.filter(f => !f.completed).map(f => <div key={f.id} className="p-3 bg-slate-50 rounded-xl flex justify-between items-start"><div><div className="font-medium">{f.candidate_name}</div><div className="text-sm text-blue-600">{new Date(f.date).toLocaleDateString()}</div>{f.note && <div className="text-xs text-slate-500 mt-1">{f.note}</div>}</div><div className="flex gap-1"><button onClick={() => toggleFollowUp(f)} className="p-1.5 bg-emerald-100 rounded hover:bg-emerald-200"><Icon name="check" size={12} color="#10b981" /></button><button onClick={() => deleteFollowUp(f.id)} className="p-1.5 bg-red-100 rounded hover:bg-red-200"><Icon name="x" size={12} color="#ef4444" /></button></div></div>)}{!followUps.filter(f => !f.completed).length && <p className="text-slate-400 text-center py-6">No pending follow-ups</p>}</div>
-          </div>
-        </div>}
-
-        {activeTab === 'templates' && <div>
-          <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-bold">Templates</h2><button onClick={() => { setEditingTemplate(null); setTemplateForm({ name: '', subject: '', body: '' }); openModal('template'); }} className="px-4 py-2 bg-blue-500 text-white rounded-xl font-medium">+ New Template</button></div>
-          <div className="grid md:grid-cols-2 gap-4">{emailTemplates.map(t => <div key={t.id} className="bg-white rounded-2xl border p-5"><div className="flex justify-between mb-3"><div><h3 className="font-bold">{t.name}</h3><p className="text-sm text-slate-500">{t.subject}</p></div><div className="flex gap-2"><button onClick={() => { setEditingTemplate(t); setTemplateForm(t); openModal('template'); }} className="p-2 bg-slate-100 rounded hover:bg-slate-200"><Icon name="edit" size={14} /></button><button onClick={() => handleDeleteTemplate(t.id)} className="p-2 bg-red-50 rounded hover:bg-red-100"><Icon name="trash" size={14} color="#ef4444" /></button></div></div><div className="bg-slate-50 rounded-xl p-3 text-sm text-slate-600 whitespace-pre-wrap max-h-24 overflow-hidden">{t.body}</div></div>)}{!emailTemplates.length && <div className="col-span-2 bg-white rounded-2xl border p-12 text-center text-slate-400">No templates yet</div>}</div>
-        </div>}
-
-        {activeTab === 'activity' && <div className="bg-white rounded-2xl border overflow-hidden">
-          <div className="px-4 py-3 border-b"><h3 className="font-bold">Activity Log</h3></div>
-          {!activities.length ? <div className="p-12 text-center text-slate-400">No activity yet</div> : <div className="divide-y max-h-[500px] overflow-y-auto">{activities.map(a => <div key={a.id} className="px-4 py-3 flex items-center gap-3"><div className={'w-9 h-9 rounded-lg flex items-center justify-center ' + (a.type === 'email' ? 'bg-emerald-100' : a.type === 'search' ? 'bg-blue-100' : 'bg-violet-100')}><Icon name={a.type === 'email' ? 'mail' : a.type === 'search' ? 'search' : 'users'} size={16} color={a.type === 'email' ? '#10b981' : a.type === 'search' ? '#3b82f6' : '#8b5cf6'} /></div><div className="flex-1 min-w-0"><p className="font-medium truncate">{a.description}</p><p className="text-xs text-slate-400">{new Date(a.timestamp).toLocaleString()}</p></div></div>)}</div>}
-        </div>}
+        )}
       </main>
-
-      <Modal id="addCandidate" wide><h2 className="text-xl font-bold mb-4">Add Candidate</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <div><label className="block text-xs font-medium mb-1">Name *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={newCandidate.name} onChange={e => setNewCandidate(p => ({ ...p, name: e.target.value }))} /></div>
-          <div><label className="block text-xs font-medium mb-1">Email</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={newCandidate.email} onChange={e => setNewCandidate(p => ({ ...p, email: e.target.value }))} /></div>
-          <div><label className="block text-xs font-medium mb-1">Location</label><select className="w-full px-3 py-2 border rounded-xl text-sm" value={newCandidate.location} onChange={e => setNewCandidate(p => ({ ...p, location: e.target.value }))}><option value="">Select</option>{locationsList.map(l => <option key={l}>{l}</option>)}</select></div>
-          <div><label className="block text-xs font-medium mb-1">Industry</label><select className="w-full px-3 py-2 border rounded-xl text-sm" value={newCandidate.industry} onChange={e => setNewCandidate(p => ({ ...p, industry: e.target.value }))}>{industries.map(i => <option key={i}>{i}</option>)}</select></div>
-          <div className="col-span-2 border-t pt-3 mt-2"><p className="text-sm font-medium mb-2">Previous Position</p></div>
-          <div><label className="block text-xs font-medium mb-1">Company *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={newCandidate.previous_company} onChange={e => setNewCandidate(p => ({ ...p, previous_company: e.target.value }))} /></div>
-          <div><label className="block text-xs font-medium mb-1">Title *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={newCandidate.previous_title} onChange={e => setNewCandidate(p => ({ ...p, previous_title: e.target.value }))} /></div>
-          <div className="col-span-2 border-t pt-3 mt-2"><p className="text-sm font-medium mb-2">New Position</p></div>
-          <div><label className="block text-xs font-medium mb-1">Company *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={newCandidate.new_company} onChange={e => setNewCandidate(p => ({ ...p, new_company: e.target.value }))} /></div>
-          <div><label className="block text-xs font-medium mb-1">Title *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={newCandidate.new_title} onChange={e => setNewCandidate(p => ({ ...p, new_title: e.target.value }))} /></div>
-          <div><label className="block text-xs font-medium mb-1">Level</label><select className="w-full px-3 py-2 border rounded-xl text-sm" value={newCandidate.new_role} onChange={e => setNewCandidate(p => ({ ...p, new_role: e.target.value }))}>{jobLevels.map(l => <option key={l}>{l}</option>)}</select></div>
-          <div><label className="block text-xs font-medium mb-1">Date</label><input type="date" className="w-full px-3 py-2 border rounded-xl text-sm" value={newCandidate.job_change_date} onChange={e => setNewCandidate(p => ({ ...p, job_change_date: e.target.value }))} /></div>
-        </div>
-        <div className="flex gap-3 justify-end mt-4 pt-4 border-t"><button onClick={() => closeModal('addCandidate')} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={handleAddCandidate} disabled={!newCandidate.name || !newCandidate.previous_company || !newCandidate.new_company || isSaving} className="px-4 py-2 bg-blue-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Saving...' : 'Add'}</button></div>
-      </Modal>
-
-      <Modal id="viewCandidate">{selectedCandidate && <><h2 className="text-xl font-bold mb-1">{selectedCandidate.name}</h2><p className="text-slate-500 text-sm mb-4">{selectedCandidate.location}</p>
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-3"><p className="text-xs font-bold text-red-600 mb-1">PREVIOUS</p><p className="font-medium text-red-800">{selectedCandidate.previous_title}</p><p className="text-sm text-red-700">{selectedCandidate.previous_company}</p></div>
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3"><p className="text-xs font-bold text-emerald-600 mb-1">NEW</p><p className="font-medium text-emerald-800">{selectedCandidate.new_title}</p><p className="text-sm text-emerald-700">{selectedCandidate.new_company}</p></div>
-        </div>
-        <div className="space-y-1 mb-4 text-sm">
-          {selectedCandidate.email && <p><strong>Email:</strong> <a href={'mailto:' + selectedCandidate.email} className="text-blue-600">{selectedCandidate.email}</a></p>}
-          {selectedCandidate.linkedin_url && <p><strong>LinkedIn:</strong> <a href={selectedCandidate.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600">View Profile</a></p>}
-          {selectedCandidate.job_change_date && <p><strong>Changed:</strong> {new Date(selectedCandidate.job_change_date).toLocaleDateString()}</p>}
-        </div>
-        <div className="flex gap-2 justify-end pt-3 border-t">
-          {selectedCandidate.source === 'web_search' && <button onClick={() => { saveSearchResult(selectedCandidate); closeModal('viewCandidate'); }} className="px-3 py-2 bg-emerald-500 text-white rounded-xl text-sm">Save to Candidates</button>}
-          <button onClick={() => handleDeleteCandidate(selectedCandidate.id)} className="px-3 py-2 bg-red-50 text-red-600 rounded-xl text-sm">Delete</button>
-          {selectedCandidate.email && <button onClick={() => { closeModal('viewCandidate'); openModal('sendEmail'); }} className="px-3 py-2 bg-blue-500 text-white rounded-xl text-sm">Send Email</button>}
-        </div>
-      </>}</Modal>
-
-      <Modal id="sendEmail">{selectedCandidate && <><h2 className="text-xl font-bold mb-4">Email {selectedCandidate.name}</h2>
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4"><p className="text-blue-800">{selectedCandidate.email}</p></div>
-        <p className="text-xs font-medium text-slate-500 mb-2">Select Template</p>
-        <div className="space-y-2 max-h-48 overflow-y-auto mb-4">{emailTemplates.map(t => <div key={t.id} onClick={() => setSelectedTemplate(t)} className={'p-3 rounded-xl cursor-pointer border ' + (selectedTemplate?.id === t.id ? 'bg-blue-100 border-blue-500' : 'bg-slate-50 hover:bg-slate-100')}><p className="font-medium text-sm">{t.name}</p><p className="text-xs text-slate-500">{t.subject}</p></div>)}{!emailTemplates.length && <p className="text-slate-400 text-center py-4">Create a template first</p>}</div>
-        <div className="flex gap-3 justify-end pt-3 border-t"><button onClick={() => { closeModal('sendEmail'); setSelectedCandidate(null); setSelectedTemplate(null); }} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={() => handleSendEmail(selectedCandidate, selectedTemplate)} disabled={!selectedTemplate || isSaving} className="px-4 py-2 bg-blue-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Sending...' : 'Send Email'}</button></div>
-      </>}</Modal>
-
-      <Modal id="template"><h2 className="text-xl font-bold mb-4">{editingTemplate ? 'Edit' : 'New'} Template</h2>
-        <div className="space-y-3">
-          <div><label className="block text-xs font-medium mb-1">Name *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={templateForm.name} onChange={e => setTemplateForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Initial Outreach" /></div>
-          <div><label className="block text-xs font-medium mb-1">Subject *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={templateForm.subject} onChange={e => setTemplateForm(p => ({ ...p, subject: e.target.value }))} placeholder="e.g. Congrats on your new role!" /></div>
-          <div><label className="block text-xs font-medium mb-1">Body *</label><textarea className="w-full px-3 py-2 border rounded-xl text-sm" rows={5} value={templateForm.body} onChange={e => setTemplateForm(p => ({ ...p, body: e.target.value }))} placeholder="Hi {{candidateName}}..." /></div>
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3"><p className="text-xs font-bold text-blue-600 mb-1">Variables</p><p className="text-xs text-slate-600">{"{{candidateName}} {{company}} {{senderName}} {{newCompany}} {{newTitle}}"}</p></div>
-        </div>
-        <div className="flex gap-3 justify-end mt-4 pt-3 border-t"><button onClick={() => closeModal('template')} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={handleSaveTemplate} disabled={!templateForm.name || !templateForm.subject || !templateForm.body || isSaving} className="px-4 py-2 bg-blue-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Saving...' : 'Save'}</button></div>
-      </Modal>
-
-      <Modal id="followUp"><h2 className="text-xl font-bold mb-4">Add Follow-up</h2>
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium mb-1">Candidate *</label>
-            <select className="w-full px-3 py-2 border rounded-xl text-sm" value={newFollowUp.candidate_id} onChange={e => { const c = candidates.find(x => x.id.toString() === e.target.value); setNewFollowUp(p => ({ ...p, candidate_id: e.target.value, candidate_name: c ? c.name : '' })); }}>
-              <option value="">Select a candidate...</option>
-              {candidates.map(c => <option key={c.id} value={c.id}>{c.name} - {c.new_company}</option>)}
-            </select>
-            {!candidates.length && <p className="text-xs text-amber-600 mt-1">No saved candidates. Save some first!</p>}
-          </div>
-          <div><label className="block text-xs font-medium mb-1">Date *</label><input type="date" className="w-full px-3 py-2 border rounded-xl text-sm" value={newFollowUp.date} onChange={e => setNewFollowUp(p => ({ ...p, date: e.target.value }))} /></div>
-          <div><label className="block text-xs font-medium mb-1">Note</label><textarea className="w-full px-3 py-2 border rounded-xl text-sm" rows={2} value={newFollowUp.note} onChange={e => setNewFollowUp(p => ({ ...p, note: e.target.value }))} placeholder="e.g. Check if they responded" /></div>
-        </div>
-        <div className="flex gap-3 justify-end mt-4 pt-3 border-t"><button onClick={() => closeModal('followUp')} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={handleAddFollowUp} disabled={!newFollowUp.candidate_name || !newFollowUp.date || isSaving} className="px-4 py-2 bg-blue-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Adding...' : 'Add'}</button></div>
-      </Modal>
-
-      <Modal id="testEmail"><h2 className="text-xl font-bold mb-4">Add Test Email</h2>
-        <div className="space-y-3">
-          <div><label className="block text-xs font-medium mb-1">Name *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={newTestEmail.name} onChange={e => setNewTestEmail(p => ({ ...p, name: e.target.value }))} placeholder="Test Person" /></div>
-          <div><label className="block text-xs font-medium mb-1">Email *</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={newTestEmail.email} onChange={e => setNewTestEmail(p => ({ ...p, email: e.target.value }))} placeholder="test@example.com" /></div>
-          <div><label className="block text-xs font-medium mb-1">Company</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={newTestEmail.company} onChange={e => setNewTestEmail(p => ({ ...p, company: e.target.value }))} placeholder="Test Corp" /></div>
-        </div>
-        <div className="flex gap-3 justify-end mt-4 pt-3 border-t"><button onClick={() => closeModal('testEmail')} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={handleAddTestEmail} disabled={!newTestEmail.name || !newTestEmail.email || isSaving} className="px-4 py-2 bg-blue-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Adding...' : 'Add'}</button></div>
-      </Modal>
-
-      <Modal id="sendTest">{selectedTestEmail && <><h2 className="text-xl font-bold mb-4">Send Test</h2>
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4"><p className="text-sm text-amber-700">Will send to: <strong>{TEST_EMAIL}</strong></p></div>
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4"><p className="text-sm text-emerald-700">Testing as: <strong>{selectedTestEmail.name}</strong></p></div>
-        <p className="text-xs font-medium text-slate-500 mb-2">Select Template</p>
-        <div className="space-y-2 max-h-40 overflow-y-auto mb-4">{emailTemplates.map(t => <div key={t.id} onClick={() => setSelectedTemplate(t)} className={'p-3 rounded-xl cursor-pointer border ' + (selectedTemplate?.id === t.id ? 'bg-emerald-100 border-emerald-500' : 'bg-slate-50 hover:bg-slate-100')}><p className="font-medium text-sm">{t.name}</p></div>)}</div>
-        <div className="flex gap-3 justify-end pt-3 border-t"><button onClick={() => { closeModal('sendTest'); setSelectedTestEmail(null); setSelectedTemplate(null); }} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={handleSendTest} disabled={!selectedTemplate || isSaving} className="px-4 py-2 bg-emerald-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Sending...' : 'Send Test'}</button></div>
-      </>}</Modal>
-
-      <Modal id="settings"><h2 className="text-xl font-bold mb-4">Settings</h2>
-        <div className="space-y-3">
-          <div><label className="block text-xs font-medium mb-1">Your Name</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={settings.sender_name || ''} onChange={e => setSettings(p => ({ ...p, sender_name: e.target.value }))} /><p className="text-xs text-slate-400 mt-1">{"{{senderName}}"}</p></div>
-          <div><label className="block text-xs font-medium mb-1">Company</label><input className="w-full px-3 py-2 border rounded-xl text-sm" value={settings.company_name || ''} onChange={e => setSettings(p => ({ ...p, company_name: e.target.value }))} /><p className="text-xs text-slate-400 mt-1">{"{{company}}"}</p></div>
-          <div className="border-t pt-3"><p className="text-sm font-medium mb-2">Email Config</p><div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3"><p className="text-sm text-emerald-700">✓ Resend API connected</p><p className="text-xs text-emerald-600">From: onboarding@resend.dev</p><p className="text-xs text-emerald-600">Reply-to: {TEST_EMAIL}</p></div></div>
-        </div>
-        <div className="flex gap-3 justify-end mt-4 pt-3 border-t"><button onClick={() => closeModal('settings')} className="px-4 py-2 border rounded-xl">Cancel</button><button onClick={saveSettings} disabled={isSaving} className="px-4 py-2 bg-blue-500 text-white rounded-xl disabled:opacity-50">{isSaving ? 'Saving...' : 'Save'}</button></div>
-      </Modal>
     </div>
   );
 }
